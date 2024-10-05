@@ -144,4 +144,4 @@ See the [Wiki](https://github.com/hrsh7th/nvim-cmp/wiki).
 
 ### Where can I see changes from this fork?
 
-- [merged.md](https://github.com/hrsh7th/nvim-cmp/blob/main/merged.md)
+See [merged.md](https://github.com/iguanacucumber/magazine.nvim/blob/main/merged.md)
