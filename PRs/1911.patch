@@ -1,0 +1,46 @@
+From 29d10d86827ee842eb0d1930d8db89f093a40f65 Mon Sep 17 00:00:00 2001
+From: xzbdmw <97848247+xzbdmw@users.noreply.github.com>
+Date: Mon, 6 May 2024 13:25:57 +0800
+Subject: [PATCH 1/2] delay to next tick
+
+---
+ lua/cmp/init.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lua/cmp/init.lua b/lua/cmp/init.lua
+index 4aaf2fe6c..16fc0a3a7 100644
+--- a/lua/cmp/init.lua
++++ b/lua/cmp/init.lua
+@@ -330,7 +330,7 @@ local on_insert_enter = function()
+   end
+ end
+ autocmd.subscribe({ 'CmdlineEnter' }, async.debounce_next_tick(on_insert_enter))
+-autocmd.subscribe({ 'InsertEnter' }, async.debounce_next_tick_by_keymap(on_insert_enter))
++autocmd.subscribe({ 'InsertEnter' }, async.debounce_next_tick(on_insert_enter))
+ 
+ -- async.throttle is needed for performance. The mapping `:<C-u>...<CR>` will fire `CmdlineChanged` for each character.
+ local on_text_changed = function()
+
+From 5811e288adef891d0d197d8a19b0ee7e2f5230bc Mon Sep 17 00:00:00 2001
+From: xzbdmw <97848247+xzbdmw@users.noreply.github.com>
+Date: Wed, 8 May 2024 02:55:40 +0800
+Subject: [PATCH 2/2] merge insertenter and cmdlineenter
+
+---
+ lua/cmp/init.lua | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/lua/cmp/init.lua b/lua/cmp/init.lua
+index 16fc0a3a7..6f9c62881 100644
+--- a/lua/cmp/init.lua
++++ b/lua/cmp/init.lua
+@@ -329,8 +329,7 @@ local on_insert_enter = function()
+     cmp.core:on_change('InsertEnter')
+   end
+ end
+-autocmd.subscribe({ 'CmdlineEnter' }, async.debounce_next_tick(on_insert_enter))
+-autocmd.subscribe({ 'InsertEnter' }, async.debounce_next_tick(on_insert_enter))
++autocmd.subscribe({ 'CmdlineEnter', 'InsertEnter' }, async.debounce_next_tick(on_insert_enter))
+ 
+ -- async.throttle is needed for performance. The mapping `:<C-u>...<CR>` will fire `CmdlineChanged` for each character.
+ local on_text_changed = function()

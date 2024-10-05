@@ -1,4 +1,4 @@
-# nvim-cmp
+# nvim-cmp (fork)
 
 A completion engine plugin for neovim written in Lua.
 Completion sources are installed from external repositories and "sourced".
@@ -141,3 +141,7 @@ Have a look at the [Wiki](https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sourc
 ### Where can I find advanced configuration examples?
 
 See the [Wiki](https://github.com/hrsh7th/nvim-cmp/wiki).
+
+### Where can I see changes from this fork?
+
+- [merged.md](https://github.com/hrsh7th/nvim-cmp/blob/main/merged.md)

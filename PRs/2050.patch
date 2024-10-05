@@ -1,0 +1,45 @@
+From 3225c52247a97332d7a6a4c417dd7f823db995ac Mon Sep 17 00:00:00 2001
+From: Greg Hurrell <greg.hurrell@datadoghq.com>
+Date: Fri, 27 Sep 2024 10:58:35 +0200
+Subject: [PATCH] fix: don't blow up when `nvim_buf_get_lines()` returns Blobs
+
+Some LSP servers may return binary garbage and `nvim_buf_get_lines()`
+will return a `Blob` instead of a `String` in those cases.
+
+I added some `print(vim.inspect())` debugging in
+`entry.get_documentation()` to prove that by the time the text passes
+through there, it's already garbage.
+
+Here's an excerpt from a sample line returned by `nvim_buf_get_lines()`,
+as rendered by `vim.inspect()`:
+
+    default\0\0\0!      vim.opt.background = 'dark'\0\0\0000
+
+(etc)
+
+Now, this looks like an LSP bug to me, but I think we shouldn't allow
+buggy LSP output to crash nvim-cmp. "Be conservative in what you send,
+be liberal in what you accept" and all that.
+
+So, degrade by coercing any `Blob` we see into a `String` before passing
+it to `strdisplaywidth()`.
+
+Closes: https://github.com/hrsh7th/nvim-cmp/issues/820
+---
+ lua/cmp/utils/window.lua | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/lua/cmp/utils/window.lua b/lua/cmp/utils/window.lua
+index 3779aa262..0dd878b89 100644
+--- a/lua/cmp/utils/window.lua
++++ b/lua/cmp/utils/window.lua
+@@ -309,6 +309,9 @@ window.get_content_height = function(self)
+   local height = 0
+   vim.api.nvim_buf_call(self:get_buffer(), function()
+     for _, text in ipairs(vim.api.nvim_buf_get_lines(self:get_buffer(), 0, -1, false)) do
++      if vim.fn.type(text) == vim.v.t_blob then
++        text = vim.fn.string(text)
++      end
+       height = height + math.max(1, math.ceil(vim.fn.strdisplaywidth(text) / self.style.width))
+     end
+   end)

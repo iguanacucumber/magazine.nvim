@@ -1,0 +1,23 @@
+From 8a10ca95fd6e256face44ba4c75ac6a18f872644 Mon Sep 17 00:00:00 2001
+From: Rob Pilling <robpilling@gmail.com>
+Date: Sat, 27 Apr 2024 11:23:48 +0100
+Subject: [PATCH] Fix completion menu showing over the cmd win
+
+Removed/regressed in 5054c1449079e
+---
+ lua/cmp/init.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lua/cmp/init.lua b/lua/cmp/init.lua
+index 4aaf2fe6c..929200cb8 100644
+--- a/lua/cmp/init.lua
++++ b/lua/cmp/init.lua
+@@ -351,7 +351,7 @@ autocmd.subscribe('CursorMovedI', function()
+ end)
+ 
+ -- If make this asynchronous, the completion menu will not close when the command output is displayed.
+-autocmd.subscribe({ 'InsertLeave', 'CmdlineLeave' }, function()
++autocmd.subscribe({ 'InsertLeave', 'CmdlineLeave', 'CmdwinEnter' }, function()
+   cmp.core:reset()
+   cmp.core.view:close()
+ end)

@@ -1,0 +1,39 @@
+From 22082edc9ecf003c566bed516d986ca344acef3f Mon Sep 17 00:00:00 2001
+From: Kyle Butt <kyle@iteratee.net>
+Date: Wed, 24 Apr 2024 13:58:31 -0600
+Subject: [PATCH] Check for complete pattern matches later in the target text
+
+This allows us to find the best match when trying to match "so"
+against "schemas/source_files.ex". Without this, bescause the 's' in
+"so" matches against "schemas", we never find the complete match against
+"source_files" later in the target. Look for a later total match and add
+it to the list if it is at least as good as the computed partial match
+so far. If we also have a partial-match continuation, prefer the longer
+of the 2 choices.
+---
+ lua/cmp/matcher.lua | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/lua/cmp/matcher.lua b/lua/cmp/matcher.lua
+index b5cbf4ca8..c893f6a82 100644
+--- a/lua/cmp/matcher.lua
++++ b/lua/cmp/matcher.lua
+@@ -112,6 +112,18 @@ matcher.match = function(input, word, option)
+   local no_symbol_match = false
+   while input_end_index <= #input and word_index <= #word do
+     local m = matcher.find_match_region(input, input_start_index, input_end_index, word, word_index)
++    if input_start_index ~= 1 then
++      -- If we can find a bigger match later, add it to the list. Prefer
++      -- a larger, later match over a match spread over more small pieces.
++      local m2 = matcher.find_match_region(input, 1, 1, word, word_index)
++      if m and m2 then
++        if m2.input_match_end >= m.input_match_end then
++          m = m2
++        end
++      elseif m2 and not m then
++        m = m2
++      end
++    end
+     if m and input_end_index <= m.input_match_end then
+       m.index = word_bound_index
+       input_start_index = m.input_match_start + 1

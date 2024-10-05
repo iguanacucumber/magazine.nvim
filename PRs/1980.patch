@@ -1,0 +1,1472 @@
+From 123c3b44d9651adb93d7a4781367a09b3afbfbfc Mon Sep 17 00:00:00 2001
+From: yioneko <yioneko@outlook.com>
+Date: Sat, 6 Jul 2024 22:23:34 +0800
+Subject: [PATCH 1/2] perf: avoid creating closure in cache.ensure and drop
+ some cached getters
+
+This mainly addresses the perf issue on large amount of calls to
+`entry.new`. Previously every `cache.ensure` calls in the code path of
+it creates an anonymous function, and it seems that luajit just could
+not inline it. Function creation is not expensive in luajit, but that
+overhead is noticeable if every `cache.ensure` call creates a function.
+The first improvemnt is to solidate the cache callback and attach it to
+the metatable of `entry`. This ensures that every created entry instance
+share the same cache callback and no new functions will be frequently created,
+reduces the ram usage and GC overhead.
+
+To improve it further, some frequently accessed fields of entry like
+`completion_item` and `offset` is refactored to use simple table access
+instead of getter pattern. The current cached getter is implemented
+using `cache.ensure`, which introduces two more levels of function calls
+on each access: `cache.key` and `cache.get`. The overhead is okay if but
+noticeable if entries amount is quite large: you need to call 4 functions on
+a simple `completion_item` field access for each item.
+
+All of the changes done in the commit is just constant time
+optimization. But the different is huge if tested with LS providing
+large amount of entries like tailwindcss.
+---
+ lua/cmp/config/compare.lua       |  10 +-
+ lua/cmp/core.lua                 |  34 +-
+ lua/cmp/entry.lua                | 638 ++++++++++++++++---------------
+ lua/cmp/entry_spec.lua           |  52 +--
+ lua/cmp/source.lua               |  83 ++--
+ lua/cmp/types/lsp.lua            |   5 +-
+ lua/cmp/utils/cache.lua          |   6 +-
+ lua/cmp/view.lua                 |   2 +-
+ lua/cmp/view/ghost_text_view.lua |   2 +-
+ 9 files changed, 430 insertions(+), 402 deletions(-)
+
+diff --git a/lua/cmp/config/compare.lua b/lua/cmp/config/compare.lua
+index 94c80287a..ec79b7336 100644
+--- a/lua/cmp/config/compare.lua
++++ b/lua/cmp/config/compare.lua
+@@ -17,7 +17,7 @@ local compare = {}
+ ---offset: Entries with smaller offset will be ranked higher.
+ ---@type cmp.ComparatorFunction
+ compare.offset = function(entry1, entry2)
+-  local diff = entry1:get_offset() - entry2:get_offset()
++  local diff = entry1.offset - entry2.offset
+   if diff < 0 then
+     return true
+   elseif diff > 0 then
+@@ -180,8 +180,8 @@ compare.locality = setmetatable({
+ }, {
+   ---@type fun(self: table, entry1: cmp.Entry, entry2: cmp.Entry): boolean|nil
+   __call = function(self, entry1, entry2)
+-    local local1 = self.locality_map[entry1:get_word()]
+-    local local2 = self.locality_map[entry2:get_word()]
++    local local1 = self.locality_map[entry1.word]
++    local local2 = self.locality_map[entry2.word]
+     if local1 ~= local2 then
+       if local1 == nil then
+         return false
+@@ -255,8 +255,8 @@ compare.scopes = setmetatable({
+ }, {
+   ---@type fun(self: table, entry1: cmp.Entry, entry2: cmp.Entry): boolean|nil
+   __call = function(self, entry1, entry2)
+-    local local1 = self.scopes_map[entry1:get_word()]
+-    local local2 = self.scopes_map[entry2:get_word()]
++    local local1 = self.scopes_map[entry1.word]
++    local local2 = self.scopes_map[entry2.word]
+     if local1 ~= local2 then
+       if local1 == nil then
+         return false
+diff --git a/lua/cmp/core.lua b/lua/cmp/core.lua
+index b34c360ec..faa1fd339 100644
+--- a/lua/cmp/core.lua
++++ b/lua/cmp/core.lua
+@@ -124,7 +124,7 @@ core.on_keymap = function(self, keys, fallback)
+       commit_character = chars,
+     }, function()
+       local ctx = self:get_context()
+-      local word = e:get_word()
++      local word = e.word
+       if string.sub(ctx.cursor_before_line, -#word, ctx.cursor.col - 1) == word and is_printable then
+         fallback()
+       else
+@@ -358,7 +358,7 @@ core.confirm = function(self, e, option, callback)
+   end
+   e.confirmed = true
+ 
+-  debug.log('entry.confirm', e:get_completion_item())
++  debug.log('entry.confirm', e.completion_item)
+ 
+   async.sync(function(done)
+     e:resolve(done)
+@@ -374,8 +374,8 @@ core.confirm = function(self, e, option, callback)
+     -- Emulate `<C-y>` behavior to save `.` register.
+     local ctx = context.new()
+     local keys = {}
+-    table.insert(keys, keymap.backspace(ctx.cursor_before_line:sub(e:get_offset())))
+-    table.insert(keys, e:get_word())
++    table.insert(keys, keymap.backspace(ctx.cursor_before_line:sub(e.offset)))
++    table.insert(keys, e.word)
+     table.insert(keys, keymap.undobreak())
+     feedkeys.call(table.concat(keys, ''), 'in')
+   end)
+@@ -384,15 +384,15 @@ core.confirm = function(self, e, option, callback)
+     local ctx = context.new()
+     if api.is_cmdline_mode() then
+       local keys = {}
+-      table.insert(keys, keymap.backspace(ctx.cursor_before_line:sub(e:get_offset())))
+-      table.insert(keys, string.sub(e.context.cursor_before_line, e:get_offset()))
++      table.insert(keys, keymap.backspace(ctx.cursor_before_line:sub(e.offset)))
++      table.insert(keys, string.sub(e.context.cursor_before_line, e.offset))
+       feedkeys.call(table.concat(keys, ''), 'in')
+     else
+       vim.cmd([[silent! undojoin]])
+       -- This logic must be used nvim_buf_set_text.
+       -- If not used, the snippet engine's placeholder wil be broken.
+-      vim.api.nvim_buf_set_text(0, e.context.cursor.row - 1, e:get_offset() - 1, ctx.cursor.row - 1, ctx.cursor.col - 1, {
+-        e.context.cursor_before_line:sub(e:get_offset()),
++      vim.api.nvim_buf_set_text(0, e.context.cursor.row - 1, e.offset - 1, ctx.cursor.row - 1, ctx.cursor.col - 1, {
++        e.context.cursor_before_line:sub(e.offset),
+       })
+       vim.api.nvim_win_set_cursor(0, { e.context.cursor.row, e.context.cursor.col - 1 })
+     end
+@@ -400,10 +400,10 @@ core.confirm = function(self, e, option, callback)
+   feedkeys.call('', 'n', function()
+     -- Apply additionalTextEdits.
+     local ctx = context.new()
+-    if #(e:get_completion_item().additionalTextEdits or {}) == 0 then
++    if #(e.completion_item.additionalTextEdits or {}) == 0 then
+       e:resolve(function()
+         local new = context.new()
+-        local text_edits = e:get_completion_item().additionalTextEdits or {}
++        local text_edits = e.completion_item.additionalTextEdits or {}
+         if #text_edits == 0 then
+           return
+         end
+@@ -428,12 +428,12 @@ core.confirm = function(self, e, option, callback)
+       end)
+     else
+       vim.cmd([[silent! undojoin]])
+-      vim.lsp.util.apply_text_edits(e:get_completion_item().additionalTextEdits, ctx.bufnr, e.source:get_position_encoding_kind())
++      vim.lsp.util.apply_text_edits(e.completion_item.additionalTextEdits, ctx.bufnr, e.source:get_position_encoding_kind())
+     end
+   end)
+   feedkeys.call('', 'n', function()
+     local ctx = context.new()
+-    local completion_item = misc.copy(e:get_completion_item())
++    local completion_item = misc.copy(e.completion_item)
+     if not completion_item.textEdit then
+       completion_item.textEdit = {}
+       local insertText = completion_item.insertText
+@@ -444,9 +444,9 @@ core.confirm = function(self, e, option, callback)
+     end
+     local behavior = option.behavior or config.get().confirmation.default_behavior
+     if behavior == types.cmp.ConfirmBehavior.Replace then
+-      completion_item.textEdit.range = e:get_replace_range()
++      completion_item.textEdit.range = e.replace_range
+     else
+-      completion_item.textEdit.range = e:get_insert_range()
++      completion_item.textEdit.range = e.insert_range
+     end
+ 
+     local diff_before = math.max(0, e.context.cursor.col - (completion_item.textEdit.range.start.character + 1))
+@@ -460,15 +460,15 @@ core.confirm = function(self, e, option, callback)
+       if false then
+         --To use complex expansion debug.
+         vim.print({ -- luacheck: ignore
+-          item = e:get_completion_item(),
++          item = e.completion_item,
+           diff_before = diff_before,
+           diff_after = diff_after,
+           new_text = new_text,
+           text_edit_new_text = completion_item.textEdit.newText,
+           range_start = completion_item.textEdit.range.start.character,
+           range_end = completion_item.textEdit.range['end'].character,
+-          original_range_start = e:get_completion_item().textEdit.range.start.character,
+-          original_range_end = e:get_completion_item().textEdit.range['end'].character,
++          original_range_start = e.completion_item.textEdit.range.start.character,
++          original_range_end = e.completion_item.textEdit.range['end'].character,
+           cursor_line = ctx.cursor_line,
+           cursor_col0 = ctx.cursor.col - 1,
+         })
+diff --git a/lua/cmp/entry.lua b/lua/cmp/entry.lua
+index b048eefcf..b9af97f9a 100644
+--- a/lua/cmp/entry.lua
++++ b/lua/cmp/entry.lua
+@@ -25,6 +25,11 @@ local matcher = require('cmp.matcher')
+ ---@field public resolved_callbacks fun()[]
+ ---@field public resolving boolean
+ ---@field public confirmed boolean
++---@field public insert_range lsp.Range
++---@field public replace_range lsp.Range
++---@field public offset integer
++---@field public word string
++---@field public filter_text string
+ local entry = {}
+ 
+ ---Create new entry
+@@ -43,159 +48,210 @@ entry.new = function(ctx, source, completion_item, item_defaults)
+   self.matches = {}
+   self.context = ctx
+   self.source = source
++  self.offset = source.request_offset
+   self.source_offset = source.request_offset
+-  self.source_insert_range = source:get_default_insert_range()
+-  self.source_replace_range = source:get_default_replace_range()
++  self.source_insert_range = source.default_insert_range
++  self.source_replace_range = source.default_replace_range
+   self.completion_item = self:fill_defaults(completion_item, item_defaults)
+   self.item_defaults = item_defaults
+   self.resolved_completion_item = nil
+   self.resolved_callbacks = {}
+   self.resolving = false
+   self.confirmed = false
++  self:_set_completion_item(completion_item)
+   return self
+ end
+ 
++---@package
++entry._set_completion_item = function(self, completion_item)
++  if not self.completion_item then
++    self.completion_item = self:fill_defaults(completion_item, self.item_defaults)
++  else
++    -- @see https://github.com/microsoft/vscode/blob/85eea4a9b2ccc99615e970bf2181edbc1781d0f9/src/vs/workbench/api/browser/mainThreadLanguageFeatures.ts#L588
++    -- @see https://github.com/microsoft/vscode/blob/85eea4a9b2ccc99615e970bf2181edbc1781d0f9/src/vs/base/common/objects.ts#L89
++    -- @see https://github.com/microsoft/vscode/blob/a00f2e64f4fa9a1f774875562e1e9697d7138ed3/src/vs/editor/contrib/suggest/browser/suggest.ts#L147
++    for k, v in pairs(completion_item) do
++      self.completion_item[k] = v or self.completion_item[k]
++    end
++  end
++  local item = self.completion_item
++  ---Create filter text
++  self.filter_text = item.filterText or str.trim(item.label)
++
++  -- TODO: the order below is important
++  if item.textEdit then
++    self.insert_range = self:convert_range_encoding(item.textEdit.insert or item.textEdit.range)
++    self.replace_range = self:convert_range_encoding(item.textEdit.replace or item.textEdit.range)
++  end
++
++  self.word = self:_get_word()
++  self.offset = self:_get_offset()
++
++  if not self.insert_range then
++    self.insert_range = {
++      start = {
++        line = self.context.cursor.row - 1,
++        character = self.offset - 1,
++      },
++      ['end'] = self.source_insert_range['end'],
++    }
++  end
++
++  if not self.replace_range or ((self.context.cursor.col - 1) == self.replace_range['end'].character) then
++    self.replace_range = {
++      start = {
++        line = self.source_replace_range.start.line,
++        character = self.offset - 1,
++      },
++      ['end'] = self.source_replace_range['end'],
++    }
++  end
++end
++
++---@deprecated use entry.offset instead
++entry.get_offset = function(self)
++  return self.offset
++end
++
+ ---Make offset value
++---@package
+ ---@return integer
+-entry.get_offset = function(self)
+-  return self.cache:ensure('get_offset', function()
+-    local offset = self.source_offset
+-    if self:get_completion_item().textEdit then
+-      local range = self:get_insert_range()
+-      if range then
+-        offset = self.context.cache:ensure('entry:' .. 'get_offset:' .. tostring(range.start.character), function()
+-          local start = math.min(range.start.character + 1, offset)
+-          for idx = start, self.source_offset do
+-            local byte = string.byte(self.context.cursor_line, idx)
+-            if byte == nil or not char.is_white(byte) then
+-              return idx
+-            end
+-          end
+-          return offset
+-        end)
++entry._get_offset = function(self)
++  local offset = self.source_offset
++  if self.completion_item.textEdit then
++    local range = self.insert_range
++    if range then
++      local start = math.min(range.start.character + 1, offset)
++      for idx = start, self.source_offset do
++        local byte = string.byte(self.context.cursor_line, idx)
++        if byte == nil or not char.is_white(byte) then
++          return idx
++        end
+       end
+-    else
+-      -- NOTE
+-      -- The VSCode does not implement this but it's useful if the server does not care about word patterns.
+-      -- We should care about this performance.
+-      local word = self:get_word()
+-      for idx = self.source_offset - 1, self.source_offset - #word, -1 do
+-        if char.is_semantic_index(self.context.cursor_line, idx) then
+-          local c = string.byte(self.context.cursor_line, idx)
+-          if char.is_white(c) then
++      return offset
++    end
++  else
++    -- NOTE
++    -- The VSCode does not implement this but it's useful if the server does not care about word patterns.
++    -- We should care about this performance.
++    local word = self.word
++    for idx = self.source_offset - 1, self.source_offset - #word, -1 do
++      if char.is_semantic_index(self.context.cursor_line, idx) then
++        local c = string.byte(self.context.cursor_line, idx)
++        if char.is_white(c) then
++          break
++        end
++        local match = true
++        for i = 1, self.source_offset - idx do
++          local c1 = string.byte(word, i)
++          local c2 = string.byte(self.context.cursor_line, idx + i - 1)
++          if not c1 or not c2 or c1 ~= c2 then
++            match = false
+             break
+           end
+-          local match = true
+-          for i = 1, self.source_offset - idx do
+-            local c1 = string.byte(word, i)
+-            local c2 = string.byte(self.context.cursor_line, idx + i - 1)
+-            if not c1 or not c2 or c1 ~= c2 then
+-              match = false
+-              break
+-            end
+-          end
+-          if match then
+-            offset = math.min(offset, idx)
+-          end
++        end
++        if match then
++          offset = math.min(offset, idx)
+         end
+       end
+     end
+-    return offset
+-  end)
++  end
++  return offset
++end
++
++---@deprecated use entry.word instead
++entry.get_word = function(self)
++  return self.word
+ end
+ 
+ ---Create word for vim.CompletedItem
+ ---NOTE: This method doesn't clear the cache after completionItem/resolve.
++---@package
+ ---@return string
+-entry.get_word = function(self)
+-  return self.cache:ensure('get_word', function()
+-    --NOTE: This is nvim-cmp specific implementation.
+-    if self:get_completion_item().word then
+-      return self:get_completion_item().word
+-    end
++entry._get_word = function(self)
++  --NOTE: This is nvim-cmp specific implementation.
++  local completion_item = self.completion_item
++  if completion_item.word then
++    return completion_item.word
++  end
+ 
+-    local word
+-    if self:get_completion_item().textEdit and not misc.empty(self:get_completion_item().textEdit.newText) then
+-      word = str.trim(self:get_completion_item().textEdit.newText)
+-      if self:get_completion_item().insertTextFormat == types.lsp.InsertTextFormat.Snippet then
+-        word = tostring(snippet.parse(word))
+-      end
+-      local overwrite = self:get_overwrite()
+-      if 0 < overwrite[2] or self:get_completion_item().insertTextFormat == types.lsp.InsertTextFormat.Snippet then
+-        word = str.get_word(word, string.byte(self.context.cursor_after_line, 1), overwrite[1] or 0)
+-      end
+-    elseif not misc.empty(self:get_completion_item().insertText) then
+-      word = str.trim(self:get_completion_item().insertText)
+-      if self:get_completion_item().insertTextFormat == types.lsp.InsertTextFormat.Snippet then
+-        word = str.get_word(tostring(snippet.parse(word)))
+-      end
+-    else
+-      word = str.trim(self:get_completion_item().label)
++  local word
++  if completion_item.textEdit and not misc.empty(completion_item.textEdit.newText) then
++    word = str.trim(completion_item.textEdit.newText)
++    if completion_item.insertTextFormat == types.lsp.InsertTextFormat.Snippet then
++      word = tostring(snippet.parse(word))
+     end
+-    return str.oneline(word)
+-  end) --[[@as string]]
++    local overwrite = self:get_overwrite()
++    if 0 < overwrite[2] or completion_item.insertTextFormat == types.lsp.InsertTextFormat.Snippet then
++      word = str.get_word(word, string.byte(self.context.cursor_after_line, 1), overwrite[1] or 0)
++    end
++  elseif not misc.empty(completion_item.insertText) then
++    word = str.trim(completion_item.insertText)
++    if completion_item.insertTextFormat == types.lsp.InsertTextFormat.Snippet then
++      word = str.get_word(tostring(snippet.parse(word)))
++    end
++  else
++    word = str.trim(completion_item.label)
++  end
++  return str.oneline(word)
+ end
+ 
+ ---Get overwrite information
+ ---@return integer[]
+ entry.get_overwrite = function(self)
+-  return self.cache:ensure('get_overwrite', function()
+-    if self:get_completion_item().textEdit then
+-      local range = self:get_insert_range()
+-      if range then
+-        return self.context.cache:ensure('entry:' .. 'get_overwrite:' .. tostring(range.start.character) .. ':' .. tostring(range['end'].character), function()
+-          local vim_start = range.start.character + 1
+-          local vim_end = range['end'].character + 1
+-          local before = self.context.cursor.col - vim_start
+-          local after = vim_end - self.context.cursor.col
+-          return { before, after }
+-        end)
+-      end
++  return self.cache:ensure('get_overwrite', entry._get_overwrite, self)
++end
++
++---@package
++entry._get_overwrite = function(self)
++  if self.completion_item.textEdit then
++    local range = self.insert_range
++    if range then
++      local vim_start = range.start.character + 1
++      local vim_end = range['end'].character + 1
++      local before = self.context.cursor.col - vim_start
++      local after = vim_end - self.context.cursor.col
++      return { before, after }
+     end
+-    return { 0, 0 }
+-  end)
++  end
++  return { 0, 0 }
+ end
+ 
+----Create filter text
+----@return string
++---@package
+ entry.get_filter_text = function(self)
+-  return self.cache:ensure('get_filter_text', function()
+-    local word
+-    if self:get_completion_item().filterText then
+-      word = self:get_completion_item().filterText
+-    else
+-      word = str.trim(self:get_completion_item().label)
+-    end
+-    return word
+-  end)
++  return self.filter_text
+ end
+ 
+ ---Get LSP's insert text
+ ---@return string
+ entry.get_insert_text = function(self)
+-  return self.cache:ensure('get_insert_text', function()
+-    local word
+-    if self:get_completion_item().textEdit then
+-      word = str.trim(self:get_completion_item().textEdit.newText)
+-      if self:get_completion_item().insertTextFormat == types.lsp.InsertTextFormat.Snippet then
+-        word = str.remove_suffix(str.remove_suffix(word, '$0'), '${0}')
+-      end
+-    elseif self:get_completion_item().insertText then
+-      word = str.trim(self:get_completion_item().insertText)
+-      if self:get_completion_item().insertTextFormat == types.lsp.InsertTextFormat.Snippet then
+-        word = str.remove_suffix(str.remove_suffix(word, '$0'), '${0}')
+-      end
+-    else
+-      word = str.trim(self:get_completion_item().label)
++  return self.cache:ensure('get_insert_text', entry._get_insert_text, self)
++end
++
++---@package
++entry._get_insert_text = function(self)
++  local completion_item = self.completion_item
++  local word
++  if completion_item.textEdit then
++    word = str.trim(completion_item.textEdit.newText)
++    if completion_item.insertTextFormat == types.lsp.InsertTextFormat.Snippet then
++      word = str.remove_suffix(str.remove_suffix(word, '$0'), '${0}')
+     end
+-    return word
+-  end)
++  elseif completion_item.insertText then
++    word = str.trim(completion_item.insertText)
++    if completion_item.insertTextFormat == types.lsp.InsertTextFormat.Snippet then
++      word = str.remove_suffix(str.remove_suffix(word, '$0'), '${0}')
++    end
++  else
++    word = str.trim(completion_item.label)
++  end
++  return word
+ end
+ 
+ ---Return the item is deprecated or not.
+ ---@return boolean
+ entry.is_deprecated = function(self)
+-  return self:get_completion_item().deprecated or vim.tbl_contains(self:get_completion_item().tags or {}, types.lsp.CompletionItemTag.Deprecated)
++  return self.completion_item.deprecated or vim.tbl_contains(self.completion_item.tags or {}, types.lsp.CompletionItemTag.Deprecated)
+ end
+ 
+ ---Return view information.
+@@ -204,161 +260,127 @@ end
+ ---@return { abbr: { text: string, bytes: integer, width: integer, hl_group: string }, kind: { text: string, bytes: integer, width: integer, hl_group: string }, menu: { text: string, bytes: integer, width: integer, hl_group: string } }
+ entry.get_view = function(self, suggest_offset, entries_buf)
+   local item = self:get_vim_item(suggest_offset)
+-  return self.cache:ensure('get_view:' .. tostring(entries_buf), function()
+-    local view = {}
+-    -- The result of vim.fn.strdisplaywidth depends on which buffer it was
+-    -- called in because it reads the values of the option 'tabstop' when
+-    -- rendering <Tab> characters.
+-    vim.api.nvim_buf_call(entries_buf, function()
+-      view.abbr = {}
+-      view.abbr.text = item.abbr or ''
+-      view.abbr.bytes = #view.abbr.text
+-      view.abbr.width = vim.fn.strdisplaywidth(view.abbr.text)
+-      view.abbr.hl_group = item.abbr_hl_group or (self:is_deprecated() and 'CmpItemAbbrDeprecated' or 'CmpItemAbbr')
+-      view.kind = {}
+-      view.kind.text = item.kind or ''
+-      view.kind.bytes = #view.kind.text
+-      view.kind.width = vim.fn.strdisplaywidth(view.kind.text)
+-      view.kind.hl_group = item.kind_hl_group or ('CmpItemKind' .. (types.lsp.CompletionItemKind[self:get_kind()] or ''))
+-      view.menu = {}
+-      view.menu.text = item.menu or ''
+-      view.menu.bytes = #view.menu.text
+-      view.menu.width = vim.fn.strdisplaywidth(view.menu.text)
+-      view.menu.hl_group = item.menu_hl_group or 'CmpItemMenu'
+-      view.dup = item.dup
+-    end)
+-    return view
++  return self.cache:ensure('get_view:' .. tostring(entries_buf), entry._get_view, self, item, entries_buf)
++end
++
++---@package
++entry._get_view = function(self, item, entries_buf)
++  local view = {}
++  -- The result of vim.fn.strdisplaywidth depends on which buffer it was
++  -- called in because it reads the values of the option 'tabstop' when
++  -- rendering <Tab> characters.
++  vim.api.nvim_buf_call(entries_buf, function()
++    view.abbr = {}
++    view.abbr.text = item.abbr or ''
++    view.abbr.bytes = #view.abbr.text
++    view.abbr.width = vim.fn.strdisplaywidth(view.abbr.text)
++    view.abbr.hl_group = item.abbr_hl_group or (self:is_deprecated() and 'CmpItemAbbrDeprecated' or 'CmpItemAbbr')
++    view.kind = {}
++    view.kind.text = item.kind or ''
++    view.kind.bytes = #view.kind.text
++    view.kind.width = vim.fn.strdisplaywidth(view.kind.text)
++    view.kind.hl_group = item.kind_hl_group or ('CmpItemKind' .. (types.lsp.CompletionItemKind[self:get_kind()] or ''))
++    view.menu = {}
++    view.menu.text = item.menu or ''
++    view.menu.bytes = #view.menu.text
++    view.menu.width = vim.fn.strdisplaywidth(view.menu.text)
++    view.menu.hl_group = item.menu_hl_group or 'CmpItemMenu'
++    view.dup = item.dup
+   end)
++  return view
+ end
+ 
+ ---Make vim.CompletedItem
+ ---@param suggest_offset integer
+ ---@return vim.CompletedItem
+ entry.get_vim_item = function(self, suggest_offset)
+-  return self.cache:ensure('get_vim_item:' .. tostring(suggest_offset), function()
+-    local completion_item = self:get_completion_item()
+-    local word = self:get_word()
+-    local abbr = str.oneline(completion_item.label)
+-
+-    -- ~ indicator
+-    local is_expandable = false
+-    local expandable_indicator = config.get().formatting.expandable_indicator
+-    if #(completion_item.additionalTextEdits or {}) > 0 then
+-      is_expandable = true
+-    elseif completion_item.insertTextFormat == types.lsp.InsertTextFormat.Snippet then
+-      is_expandable = self:get_insert_text() ~= word
+-    elseif completion_item.kind == types.lsp.CompletionItemKind.Snippet then
+-      is_expandable = true
+-    end
+-    if expandable_indicator and is_expandable then
+-      abbr = abbr .. '~'
+-    end
++  return self.cache:ensure('get_vim_item:' .. tostring(suggest_offset), entry._get_vim_item, self, suggest_offset)
++end
+ 
+-    -- append delta text
+-    if suggest_offset < self:get_offset() then
+-      word = string.sub(self.context.cursor_before_line, suggest_offset, self:get_offset() - 1) .. word
+-    end
++---@package
++entry._get_vim_item = function(self, suggest_offset)
++  local completion_item = self.completion_item
++  local word = self.word
++  local abbr = str.oneline(completion_item.label)
++
++  -- ~ indicator
++  local is_expandable = false
++  local expandable_indicator = config.get().formatting.expandable_indicator
++  if #(completion_item.additionalTextEdits or {}) > 0 then
++    is_expandable = true
++  elseif completion_item.insertTextFormat == types.lsp.InsertTextFormat.Snippet then
++    is_expandable = self:get_insert_text() ~= word
++  elseif completion_item.kind == types.lsp.CompletionItemKind.Snippet then
++    is_expandable = true
++  end
++  if expandable_indicator and is_expandable then
++    abbr = abbr .. '~'
++  end
+ 
+-    -- labelDetails.
+-    local menu = nil
+-    if completion_item.labelDetails then
+-      menu = ''
+-      if completion_item.labelDetails.detail then
+-        menu = menu .. completion_item.labelDetails.detail
+-      end
+-      if completion_item.labelDetails.description then
+-        menu = menu .. completion_item.labelDetails.description
+-      end
++  -- append delta text
++  if suggest_offset < self.offset then
++    word = string.sub(self.context.cursor_before_line, suggest_offset, self.offset - 1) .. word
++  end
++
++  -- labelDetails.
++  local menu = nil
++  if completion_item.labelDetails then
++    menu = ''
++    if completion_item.labelDetails.detail then
++      menu = menu .. completion_item.labelDetails.detail
++    end
++    if completion_item.labelDetails.description then
++      menu = menu .. completion_item.labelDetails.description
+     end
++  end
+ 
+-    -- remove duplicated string.
+-    if self:get_offset() ~= self.context.cursor.col then
+-      for i = 1, #word do
+-        if str.has_prefix(self.context.cursor_after_line, string.sub(word, i, #word)) then
+-          word = string.sub(word, 1, i - 1)
+-          break
+-        end
++  -- remove duplicated string.
++  if self.offset ~= self.context.cursor.col then
++    for i = 1, #word do
++      if str.has_prefix(self.context.cursor_after_line, string.sub(word, i, #word)) then
++        word = string.sub(word, 1, i - 1)
++        break
+       end
+     end
++  end
+ 
+-    local cmp_opts = self:get_completion_item().cmp or {}
+-
+-    local vim_item = {
+-      word = word,
+-      abbr = abbr,
+-      kind = cmp_opts.kind_text or types.lsp.CompletionItemKind[self:get_kind()] or types.lsp.CompletionItemKind[1],
+-      kind_hl_group = cmp_opts.kind_hl_group,
+-      menu = menu,
+-      dup = self:get_completion_item().dup or 1,
+-    }
+-    if config.get().formatting.format then
+-      vim_item = config.get().formatting.format(self, vim_item)
+-    end
+-    vim_item.word = str.oneline(vim_item.word or '')
+-    vim_item.abbr = str.oneline(vim_item.abbr or '')
+-    vim_item.kind = str.oneline(vim_item.kind or '')
+-    vim_item.menu = str.oneline(vim_item.menu or '')
+-    vim_item.equal = 1
+-    vim_item.empty = 1
+-
+-    return vim_item
+-  end)
++  local cmp_opts = completion_item.cmp or {}
++
++  local vim_item = {
++    word = word,
++    abbr = abbr,
++    kind = cmp_opts.kind_text or types.lsp.CompletionItemKind[self:get_kind()] or types.lsp.CompletionItemKind[1],
++    kind_hl_group = cmp_opts.kind_hl_group,
++    menu = menu,
++    dup = completion_item.dup or 1,
++  }
++  if config.get().formatting.format then
++    vim_item = config.get().formatting.format(self, vim_item)
++  end
++  vim_item.word = str.oneline(vim_item.word or '')
++  vim_item.abbr = str.oneline(vim_item.abbr or '')
++  vim_item.kind = str.oneline(vim_item.kind or '')
++  vim_item.menu = str.oneline(vim_item.menu or '')
++  vim_item.equal = 1
++  vim_item.empty = 1
++
++  return vim_item
+ end
+ 
+ ---Get commit characters
+ ---@return string[]
+ entry.get_commit_characters = function(self)
+-  return self:get_completion_item().commitCharacters or {}
++  return self.completion_item.commitCharacters or {}
+ end
+ 
+----Return insert range
+----@return lsp.Range|nil
++---@deprecated use entry.insert_range instead
+ entry.get_insert_range = function(self)
+-  local insert_range
+-  if self:get_completion_item().textEdit then
+-    if self:get_completion_item().textEdit.insert then
+-      insert_range = self:get_completion_item().textEdit.insert
+-    else
+-      insert_range = self:get_completion_item().textEdit.range --[[@as lsp.Range]]
+-    end
+-    insert_range = self:convert_range_encoding(insert_range)
+-  else
+-    insert_range = {
+-      start = {
+-        line = self.context.cursor.row - 1,
+-        character = self:get_offset() - 1,
+-      },
+-      ['end'] = self.source_insert_range['end'],
+-    }
+-  end
+-  return insert_range
++  return self.insert_range
+ end
+ 
+----Return replace range
+----@return lsp.Range|nil
++---@deprecated use entry.replace_range instead
+ entry.get_replace_range = function(self)
+-  return self.cache:ensure('get_replace_range', function()
+-    local replace_range
+-    if self:get_completion_item().textEdit then
+-      if self:get_completion_item().textEdit.replace then
+-        replace_range = self:get_completion_item().textEdit.replace
+-      else
+-        replace_range = self:get_completion_item().textEdit.range --[[@as lsp.Range]]
+-      end
+-      replace_range = self:convert_range_encoding(replace_range)
+-    end
+-
+-    if not replace_range or ((self.context.cursor.col - 1) == replace_range['end'].character) then
+-      replace_range = {
+-        start = {
+-          line = self.source_replace_range.start.line,
+-          character = self:get_offset() - 1,
+-        },
+-        ['end'] = self.source_replace_range['end'],
+-      }
+-    end
+-    return replace_range
+-  end)
++  return self.replace_range
+ end
+ 
+ ---Match line.
+@@ -366,82 +388,76 @@ end
+ ---@param matching_config cmp.MatchingConfig
+ ---@return { score: integer, matches: table[] }
+ entry.match = function(self, input, matching_config)
+-  return self.match_cache:ensure(input .. ':' .. (self.resolved_completion_item and '1' or '0' .. ':') .. (matching_config.disallow_fuzzy_matching and '1' or '0') .. ':' .. (matching_config.disallow_partial_fuzzy_matching and '1' or '0') .. ':' .. (matching_config.disallow_partial_matching and '1' or '0') .. ':' .. (matching_config.disallow_prefix_unmatching and '1' or '0') .. ':' .. (matching_config.disallow_symbol_nonprefix_matching and '1' or '0'), function()
+-    local option = {
+-      disallow_fuzzy_matching = matching_config.disallow_fuzzy_matching,
+-      disallow_partial_fuzzy_matching = matching_config.disallow_partial_fuzzy_matching,
+-      disallow_partial_matching = matching_config.disallow_partial_matching,
+-      disallow_prefix_unmatching = matching_config.disallow_prefix_unmatching,
+-      disallow_symbol_nonprefix_matching = matching_config.disallow_symbol_nonprefix_matching,
+-      synonyms = {
+-        self:get_word(),
+-        self:get_completion_item().label,
+-      },
+-    }
++  -- https://www.lua.org/pil/11.6.html
++  -- do not use '..' to allocate multiple strings
++  local cache_key = string.format('%s:%d:%d:%d:%d:%d:%d', input, self.resolved_completion_item and 1 or 0, matching_config.disallow_fuzzy_matching and 1 or 0, matching_config.disallow_partial_matching and 1 or 0, matching_config.disallow_prefix_unmatching and 1 or 0, matching_config.disallow_partial_fuzzy_matching and 1 or 0, matching_config.disallow_symbol_nonprefix_matching and 1 or 0)
++  return self.match_cache:ensure(cache_key, entry._match, self, input, matching_config)
++end
+ 
+-    local score, matches, filter_text, _
+-    local checked = {} ---@type table<string, boolean>
+-
+-    filter_text = self:get_filter_text()
+-    checked[filter_text] = true
+-    score, matches = matcher.match(input, filter_text, option)
+-
+-    -- Support the language server that doesn't respect VSCode's behaviors.
+-    if score == 0 then
+-      if self:get_completion_item().textEdit and not misc.empty(self:get_completion_item().textEdit.newText) then
+-        local diff = self.source_offset - self:get_offset()
+-        if diff > 0 then
+-          local prefix = string.sub(self.context.cursor_line, self:get_offset(), self:get_offset() + diff)
+-          local accept = nil
+-          accept = accept or string.match(prefix, '^[^%a]+$')
+-          accept = accept or string.find(self:get_completion_item().textEdit.newText, prefix, 1, true)
+-          if accept then
+-            filter_text = prefix .. self:get_filter_text()
+-            if not checked[filter_text] then
+-              checked[filter_text] = true
+-              score, matches = matcher.match(input, filter_text, option)
+-            end
++---@package
++entry._match = function(self, input, matching_config)
++  local completion_item = self.completion_item
++  local option = {
++    disallow_fuzzy_matching = matching_config.disallow_fuzzy_matching,
++    disallow_partial_fuzzy_matching = matching_config.disallow_partial_fuzzy_matching,
++    disallow_partial_matching = matching_config.disallow_partial_matching,
++    disallow_prefix_unmatching = matching_config.disallow_prefix_unmatching,
++    disallow_symbol_nonprefix_matching = matching_config.disallow_symbol_nonprefix_matching,
++    synonyms = {
++      self.word,
++      self.completion_item.label,
++    },
++  }
++
++  local score, matches, filter_text, _
++  local checked = {} ---@type table<string, boolean>
++
++  filter_text = self.filter_text
++  checked[filter_text] = true
++  score, matches = matcher.match(input, filter_text, option)
++
++  -- Support the language server that doesn't respect VSCode's behaviors.
++  if score == 0 then
++    if completion_item.textEdit and not misc.empty(completion_item.textEdit.newText) then
++      local diff = self.source_offset - self.offset
++      if diff > 0 then
++        local prefix = string.sub(self.context.cursor_line, self.offset, self.offset + diff)
++        local accept = nil
++        accept = accept or string.match(prefix, '^[^%a]+$')
++        accept = accept or string.find(completion_item.textEdit.newText, prefix, 1, true)
++        if accept then
++          filter_text = prefix .. filter_text
++          if not checked[filter_text] then
++            checked[filter_text] = true
++            score, matches = matcher.match(input, filter_text, option)
+           end
+         end
+       end
+     end
++  end
+ 
+-    -- Fix highlight if filterText is not the same to vim_item.abbr.
+-    if score > 0 then
+-      local vim_item = self:get_vim_item(self.source_offset)
+-      filter_text = vim_item.abbr or vim_item.word
+-      if not checked[filter_text] then
+-        local diff = self.source_offset - self:get_offset()
+-        _, matches = matcher.match(input:sub(1 + diff), filter_text, option)
+-      end
++  -- Fix highlight if filterText is not the same to vim_item.abbr.
++  if score > 0 then
++    local vim_item = self:get_vim_item(self.source_offset)
++    filter_text = vim_item.abbr or vim_item.word
++    if not checked[filter_text] then
++      local diff = self.source_offset - self.offset
++      _, matches = matcher.match(input:sub(1 + diff), filter_text, option)
+     end
++  end
+ 
+-    return { score = score, matches = matches }
+-  end)
++  return { score = score, matches = matches }
+ end
+ 
+----Get resolved completion item if possible.
+----@return lsp.CompletionItem
++---@deprecated use entry.completion_item instead
+ entry.get_completion_item = function(self)
+-  return self.cache:ensure('get_completion_item', function()
+-    if self.resolved_completion_item then
+-      -- @see https://github.com/microsoft/vscode/blob/85eea4a9b2ccc99615e970bf2181edbc1781d0f9/src/vs/workbench/api/browser/mainThreadLanguageFeatures.ts#L588
+-      -- @see https://github.com/microsoft/vscode/blob/85eea4a9b2ccc99615e970bf2181edbc1781d0f9/src/vs/base/common/objects.ts#L89
+-      -- @see https://github.com/microsoft/vscode/blob/a00f2e64f4fa9a1f774875562e1e9697d7138ed3/src/vs/editor/contrib/suggest/browser/suggest.ts#L147
+-      local completion_item = misc.copy(self.completion_item)
+-      for k, v in pairs(self.resolved_completion_item) do
+-        completion_item[k] = v or completion_item[k]
+-      end
+-      return completion_item
+-    end
+-    return self.completion_item
+-  end)
++  return self.completion_item
+ end
+ 
+ ---Create documentation
+ ---@return string[]
+ entry.get_documentation = function(self)
+-  local item = self:get_completion_item()
++  local item = self.completion_item
+ 
+   local documents = {}
+ 
+@@ -483,13 +499,13 @@ end
+ ---Get completion item kind
+ ---@return lsp.CompletionItemKind
+ entry.get_kind = function(self)
+-  return self:get_completion_item().kind or types.lsp.CompletionItemKind.Text
++  return self.completion_item.kind or types.lsp.CompletionItemKind.Text
+ end
+ 
+ ---Execute completion item's command.
+ ---@param callback fun()
+ entry.execute = function(self, callback)
+-  self.source:execute(self:get_completion_item(), callback)
++  self.source:execute(self.completion_item, callback)
+ end
+ 
+ ---Resolve completion item.
+@@ -507,7 +523,8 @@ entry.resolve = function(self, callback)
+       if not completion_item then
+         return
+       end
+-      self.resolved_completion_item = self:fill_defaults(completion_item, self.item_defaults)
++      self:_set_completion_item(completion_item)
++      self.resolved_completion_item = self.completion_item
+       self.cache:clear()
+       for _, c in ipairs(self.resolved_callbacks) do
+         c()
+@@ -560,13 +577,18 @@ end
+ 
+ ---Convert the oneline range encoding.
+ entry.convert_range_encoding = function(self, range)
+-  local from_encoding = self.source:get_position_encoding_kind()
+-  return self.context.cache:ensure('entry.convert_range_encoding:' .. range.start.character .. ':' .. range['end'].character .. ':' .. from_encoding, function()
+-    return {
+-      start = types.lsp.Position.to_utf8(self.context.cursor_line, range.start, from_encoding),
+-      ['end'] = types.lsp.Position.to_utf8(self.context.cursor_line, range['end'], from_encoding),
+-    }
+-  end)
++  local from_encoding = self.source.position_encoding
++  local cache_key = string.format('entry.convert_range_encoding:%d:%d:%s', range.start.character, range['end'].character, from_encoding)
++  local res = self.context.cache:get(cache_key)
++  if res then
++    return res
++  end
++  res = {
++    start = types.lsp.Position.to_utf8(self.context.cursor_line, range.start, from_encoding),
++    ['end'] = types.lsp.Position.to_utf8(self.context.cursor_line, range['end'], from_encoding),
++  }
++  self.context.cache:set(cache_key, res)
++  return res
+ end
+ 
+ ---Return true if the entry is invalid.
+diff --git a/lua/cmp/entry_spec.lua b/lua/cmp/entry_spec.lua
+index 3cb9b5861..4f635eb34 100644
+--- a/lua/cmp/entry_spec.lua
++++ b/lua/cmp/entry_spec.lua
+@@ -11,8 +11,8 @@ describe('entry', function()
+     local e = entry.new(state.manual(), state.source(), {
+       label = '@',
+     })
+-    assert.are.equal(e:get_offset(), 3)
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, '@')
++    assert.are.equal(e.offset, 3)
++    assert.are.equal(e:get_vim_item(e.offset).word, '@')
+   end)
+ 
+   it('word length (no fix)', function()
+@@ -21,8 +21,8 @@ describe('entry', function()
+     local e = entry.new(state.manual(), state.source(), {
+       label = 'b',
+     })
+-    assert.are.equal(e:get_offset(), 5)
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, 'b')
++    assert.are.equal(e.offset, 5)
++    assert.are.equal(e:get_vim_item(e.offset).word, 'b')
+   end)
+ 
+   it('word length (fix)', function()
+@@ -31,8 +31,8 @@ describe('entry', function()
+     local e = entry.new(state.manual(), state.source(), {
+       label = 'b.',
+     })
+-    assert.are.equal(e:get_offset(), 3)
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, 'b.')
++    assert.are.equal(e.offset, 3)
++    assert.are.equal(e:get_vim_item(e.offset).word, 'b.')
+   end)
+ 
+   it('semantic index (no fix)', function()
+@@ -41,8 +41,8 @@ describe('entry', function()
+     local e = entry.new(state.manual(), state.source(), {
+       label = 'c.',
+     })
+-    assert.are.equal(e:get_offset(), 6)
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, 'c.')
++    assert.are.equal(e.offset, 6)
++    assert.are.equal(e:get_vim_item(e.offset).word, 'c.')
+   end)
+ 
+   it('semantic index (fix)', function()
+@@ -51,8 +51,8 @@ describe('entry', function()
+     local e = entry.new(state.manual(), state.source(), {
+       label = 'bc.',
+     })
+-    assert.are.equal(e:get_offset(), 3)
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, 'bc.')
++    assert.are.equal(e.offset, 3)
++    assert.are.equal(e:get_vim_item(e.offset).word, 'bc.')
+   end)
+ 
+   it('[vscode-html-language-server] 1', function()
+@@ -74,8 +74,8 @@ describe('entry', function()
+         newText = '  </div',
+       },
+     })
+-    assert.are.equal(e:get_offset(), 5)
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, '</div')
++    assert.are.equal(e.offset, 5)
++    assert.are.equal(e:get_vim_item(e.offset).word, '</div')
+   end)
+ 
+   it('[clangd] 1', function()
+@@ -101,7 +101,7 @@ describe('entry', function()
+       },
+     })
+     assert.are.equal(e:get_vim_item(4).word, '->foo')
+-    assert.are.equal(e:get_filter_text(), 'foo')
++    assert.are.equal(e.filter_text, 'foo')
+   end)
+ 
+   it('[typescript-language-server] 1', function()
+@@ -112,7 +112,7 @@ describe('entry', function()
+     })
+     -- The offset will be 18 in this situation because the server returns `[Symbol]` as candidate.
+     assert.are.equal(e:get_vim_item(18).word, '.catch')
+-    assert.are.equal(e:get_filter_text(), 'catch')
++    assert.are.equal(e.filter_text, 'catch')
+   end)
+ 
+   it('[typescript-language-server] 2', function()
+@@ -136,7 +136,7 @@ describe('entry', function()
+       },
+     })
+     assert.are.equal(e:get_vim_item(18).word, '[Symbol]')
+-    assert.are.equal(e:get_filter_text(), '.Symbol')
++    assert.are.equal(e.filter_text, '.Symbol')
+   end)
+ 
+   it('[lua-language-server] 1', function()
+@@ -163,7 +163,7 @@ describe('entry', function()
+       },
+     })
+     assert.are.equal(e:get_vim_item(19).word, 'cmp.config')
+-    assert.are.equal(e:get_filter_text(), 'cmp.config')
++    assert.are.equal(e.filter_text, 'cmp.config')
+ 
+     -- press '
+     state.input("'")
+@@ -185,7 +185,7 @@ describe('entry', function()
+       },
+     })
+     assert.are.equal(e:get_vim_item(19).word, 'cmp.config')
+-    assert.are.equal(e:get_filter_text(), 'cmp.config')
++    assert.are.equal(e.filter_text, 'cmp.config')
+   end)
+ 
+   it('[lua-language-server] 2', function()
+@@ -212,7 +212,7 @@ describe('entry', function()
+       },
+     })
+     assert.are.equal(e:get_vim_item(19).word, 'lua.cmp.config')
+-    assert.are.equal(e:get_filter_text(), 'lua.cmp.config')
++    assert.are.equal(e.filter_text, 'lua.cmp.config')
+ 
+     -- press '
+     state.input("'")
+@@ -234,7 +234,7 @@ describe('entry', function()
+       },
+     })
+     assert.are.equal(e:get_vim_item(19).word, 'lua.cmp.config')
+-    assert.are.equal(e:get_filter_text(), 'lua.cmp.config')
++    assert.are.equal(e.filter_text, 'lua.cmp.config')
+   end)
+ 
+   it('[intelephense] 1', function()
+@@ -260,8 +260,8 @@ describe('entry', function()
+         },
+       },
+     })
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, '$this')
+-    assert.are.equal(e:get_filter_text(), '$this')
++    assert.are.equal(e:get_vim_item(e.offset).word, '$this')
++    assert.are.equal(e.filter_text, '$this')
+   end)
+ 
+   it('[odin-language-server] 1', function()
+@@ -285,7 +285,7 @@ describe('entry', function()
+       label = 'string',
+       tags = {},
+     })
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, 'string')
++    assert.are.equal(e:get_vim_item(e.offset).word, 'string')
+   end)
+ 
+   it('[#47] word should not contain \\n character', function()
+@@ -299,8 +299,8 @@ describe('entry', function()
+       insertTextFormat = 1,
+       insertText = '__init__(self) -> None:\n  pass',
+     })
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, '__init__(self) -> None:')
+-    assert.are.equal(e:get_filter_text(), '__init__')
++    assert.are.equal(e:get_vim_item(e.offset).word, '__init__(self) -> None:')
++    assert.are.equal(e.filter_text, '__init__')
+   end)
+ 
+   -- I can't understand this test case...
+@@ -360,7 +360,7 @@ describe('entry', function()
+         },
+       },
+     })
+-    assert.are.equal(e:get_offset(), 12)
+-    assert.are.equal(e:get_vim_item(e:get_offset()).word, 'getPath()')
++    assert.are.equal(e.offset, 12)
++    assert.are.equal(e:get_vim_item(e.offset).word, 'getPath()')
+   end)
+ end)
+diff --git a/lua/cmp/source.lua b/lua/cmp/source.lua
+index d733224da..bac5818c8 100644
+--- a/lua/cmp/source.lua
++++ b/lua/cmp/source.lua
+@@ -24,6 +24,9 @@ local char = require('cmp.utils.char')
+ ---@field public completion_context lsp.CompletionContext|nil
+ ---@field public status cmp.SourceStatus
+ ---@field public complete_dedup function
++---@field public default_replace_range lsp.Range
++---@field public default_insert_range lsp.Range
++---@field public position_encoding lsp.PositionEncodingKind
+ local source = {}
+ 
+ ---@alias cmp.SourceStatus 1 | 2 | 3
+@@ -41,6 +44,7 @@ source.new = function(name, s)
+   self.cache = cache.new()
+   self.complete_dedup = async.dedup()
+   self.revision = 0
++  self.position_encoding = self:get_position_encoding_kind()
+   self:reset()
+   return self
+ end
+@@ -108,7 +112,7 @@ source.get_entries = function(self, ctx)
+   local entries = {}
+   local matching_config = self:get_matching_config()
+   for _, e in ipairs(target_entries) do
+-    local o = e:get_offset()
++    local o = e.offset
+     if not inputs[o] then
+       inputs[o] = string.sub(ctx.cursor_before_line, o)
+     end
+@@ -118,7 +122,7 @@ source.get_entries = function(self, ctx)
+     e.exact = false
+     if e.score >= 1 then
+       e.matches = match.matches
+-      e.exact = e:get_filter_text() == inputs[o] or e:get_word() == inputs[o]
++      e.exact = e.filter_text == inputs[o] or e.word == inputs[o]
+ 
+       if entry_filter(e, ctx) then
+         entries[#entries + 1] = e
+@@ -138,46 +142,46 @@ source.get_entries = function(self, ctx)
+ end
+ 
+ ---Get default insert range (UTF8 byte index).
++---@package
+ ---@return lsp.Range
+-source.get_default_insert_range = function(self)
+-  if not self.context then
+-    error('context is not initialized yet.')
+-  end
+-
+-  return self.cache:ensure({ 'get_default_insert_range', tostring(self.revision) }, function()
+-    return {
+-      start = {
+-        line = self.context.cursor.row - 1,
+-        character = self.offset - 1,
+-      },
+-      ['end'] = {
+-        line = self.context.cursor.row - 1,
+-        character = self.context.cursor.col - 1,
+-      },
+-    }
+-  end)
++source._get_default_insert_range = function(self)
++  return {
++    start = {
++      line = self.context.cursor.row - 1,
++      character = self.offset - 1,
++    },
++    ['end'] = {
++      line = self.context.cursor.row - 1,
++      character = self.context.cursor.col - 1,
++    },
++  }
+ end
+ 
+ ---Get default replace range (UTF8 byte index).
++---@package
+ ---@return lsp.Range
+-source.get_default_replace_range = function(self)
+-  if not self.context then
+-    error('context is not initialized yet.')
+-  end
++source._get_default_replace_range = function(self)
++  local _, e = pattern.offset('^' .. '\\%(' .. self:get_keyword_pattern() .. '\\)', string.sub(self.context.cursor_line, self.offset))
++  return {
++    start = {
++      line = self.context.cursor.row - 1,
++      character = self.offset,
++    },
++    ['end'] = {
++      line = self.context.cursor.row - 1,
++      character = (e and self.offset + e - 2 or self.context.cursor.col - 1),
++    },
++  }
++end
+ 
+-  return self.cache:ensure({ 'get_default_replace_range', tostring(self.revision) }, function()
+-    local _, e = pattern.offset('^' .. '\\%(' .. self:get_keyword_pattern() .. '\\)', string.sub(self.context.cursor_line, self.offset))
+-    return {
+-      start = {
+-        line = self.context.cursor.row - 1,
+-        character = self.offset,
+-      },
+-      ['end'] = {
+-        line = self.context.cursor.row - 1,
+-        character = (e and self.offset + e - 2 or self.context.cursor.col - 1),
+-      },
+-    }
+-  end)
++---@deprecated use source.default_insert_range instead
++source.get_default_insert_range = function(self)
++  return self.default_insert_range
++end
++
++---@deprecated use source.default_replace_range instead
++source.get_default_replae_range = function(self)
++  return self.default_replace_range
+ end
+ 
+ ---Return source name.
+@@ -322,6 +326,9 @@ source.complete = function(self, ctx, callback)
+   self.offset = offset
+   self.request_offset = offset
+   self.context = ctx
++  self.default_replace_range = self:_get_default_replace_range()
++  self.default_insert_range = self:_get_default_insert_range()
++  self.position_encoding = self:get_position_encoding_kind()
+   self.completion_context = completion_context
+   self.source:complete(
+     vim.tbl_extend('keep', misc.copy(self:get_source_config()), {
+@@ -346,11 +353,11 @@ source.complete = function(self, ctx, callback)
+         self.status = source.SourceStatus.COMPLETED
+         self.entries = {}
+         for _, item in ipairs(response.items or response) do
+-          if (item or {}).label then
++          if item.label then
+             local e = entry.new(ctx, self, item, response.itemDefaults)
+             if not e:is_invalid() then
+               table.insert(self.entries, e)
+-              self.offset = math.min(self.offset, e:get_offset())
++              self.offset = math.min(self.offset, e.offset)
+             end
+           end
+         end
+diff --git a/lua/cmp/types/lsp.lua b/lua/cmp/types/lsp.lua
+index 65d6301ec..c6c54cc46 100644
+--- a/lua/cmp/types/lsp.lua
++++ b/lua/cmp/types/lsp.lua
+@@ -65,9 +65,8 @@ lsp.Position = {
+       return position
+     end
+ 
+-    local ok, byteindex = pcall(function()
+-      return vim.str_byteindex(text, position.character, from_encoding == lsp.PositionEncodingKind.UTF16)
+-    end)
++    local ok, byteindex = pcall(vim.str_byteindex,
++      text, position.character, from_encoding == lsp.PositionEncodingKind.UTF16)
+     if not ok then
+       return position
+     end
+diff --git a/lua/cmp/utils/cache.lua b/lua/cmp/utils/cache.lua
+index 26456ad4b..805e491eb 100644
+--- a/lua/cmp/utils/cache.lua
++++ b/lua/cmp/utils/cache.lua
+@@ -30,12 +30,12 @@ end
+ ---Ensure value by callback
+ ---@generic T
+ ---@param key string|string[]
+----@param callback fun(): T
++---@param callback fun(...): T
+ ---@return T
+-cache.ensure = function(self, key, callback)
++cache.ensure = function(self, key, callback, ...)
+   local value = self:get(key)
+   if value == nil then
+-    local v = callback()
++    local v = callback(...)
+     self:set(key, v)
+     return v
+   end
+diff --git a/lua/cmp/view.lua b/lua/cmp/view.lua
+index aef688c6e..e4f199ab7 100644
+--- a/lua/cmp/view.lua
++++ b/lua/cmp/view.lua
+@@ -99,7 +99,7 @@ view.open = function(self, ctx, sources)
+           for _, e in ipairs(s:get_entries(ctx)) do
+             e.score = e.score + priority
+             table.insert(group_entries, e)
+-            offset = math.min(offset, e:get_offset())
++            offset = math.min(offset, e.offset)
+           end
+         end
+       end
+diff --git a/lua/cmp/view/ghost_text_view.lua b/lua/cmp/view/ghost_text_view.lua
+index 19c951359..db5e2f0dd 100644
+--- a/lua/cmp/view/ghost_text_view.lua
++++ b/lua/cmp/view/ghost_text_view.lua
+@@ -89,7 +89,7 @@ ghost_text_view.text_gen = function(self, line, cursor_col)
+     word = tostring(snippet.parse(word))
+   end
+   local word_clen = vim.str_utfindex(word)
+-  local cword = string.sub(line, self.entry:get_offset(), cursor_col)
++  local cword = string.sub(line, self.entry.offset, cursor_col)
+   local cword_clen = vim.str_utfindex(cword)
+   -- Number of characters from entry text (word) to be displayed as ghost thext
+   local nchars = word_clen - cword_clen
+
+From a475d8b8b282fda2d18f9fbdebba401b405cfecd Mon Sep 17 00:00:00 2001
+From: yioneko <yioneko@outlook.com>
+Date: Sat, 6 Jul 2024 23:41:56 +0800
+Subject: [PATCH 2/2] perf: delay fuzzy match on displayed vim item
+
+`entry.get_vim_item` is a very heavy call, especially when user do
+complex stuff on item formatting. Delay its call to window displaying to
+let `performance.max_view_entries` applied to it.
+---
+ lua/cmp/entry.lua                      | 48 +++++++++++++++++++++-----
+ lua/cmp/view/custom_entries_view.lua   |  2 +-
+ lua/cmp/view/wildmenu_entries_view.lua |  2 +-
+ 3 files changed, 41 insertions(+), 11 deletions(-)
+
+diff --git a/lua/cmp/entry.lua b/lua/cmp/entry.lua
+index b9af97f9a..3a5264801 100644
+--- a/lua/cmp/entry.lua
++++ b/lua/cmp/entry.lua
+@@ -30,6 +30,7 @@ local matcher = require('cmp.matcher')
+ ---@field public offset integer
+ ---@field public word string
+ ---@field public filter_text string
++---@field private match_view_args_ret {input:string, word:string, option:cmp.MatchingConfig, matches:table[]}
+ local entry = {}
+ 
+ ---Create new entry
+@@ -391,7 +392,18 @@ entry.match = function(self, input, matching_config)
+   -- https://www.lua.org/pil/11.6.html
+   -- do not use '..' to allocate multiple strings
+   local cache_key = string.format('%s:%d:%d:%d:%d:%d:%d', input, self.resolved_completion_item and 1 or 0, matching_config.disallow_fuzzy_matching and 1 or 0, matching_config.disallow_partial_matching and 1 or 0, matching_config.disallow_prefix_unmatching and 1 or 0, matching_config.disallow_partial_fuzzy_matching and 1 or 0, matching_config.disallow_symbol_nonprefix_matching and 1 or 0)
+-  return self.match_cache:ensure(cache_key, entry._match, self, input, matching_config)
++  local matched = self.match_cache:get(cache_key)
++  if matched then
++    if self.match_view_args_ret and self.match_view_args_ret.input ~= input then
++      self.match_view_args_ret.input = input
++      self.match_view_args_ret.word = matched._word
++      self.match_view_args_ret.matches = matched.matches
++    end
++    return matched
++  end
++  matched = self:_match(input, matching_config)
++  self.match_cache:set(cache_key, matched)
++  return matched
+ end
+ 
+ ---@package
+@@ -409,7 +421,7 @@ entry._match = function(self, input, matching_config)
+     },
+   }
+ 
+-  local score, matches, filter_text, _
++  local score, matches, filter_text
+   local checked = {} ---@type table<string, boolean>
+ 
+   filter_text = self.filter_text
+@@ -438,15 +450,33 @@ entry._match = function(self, input, matching_config)
+ 
+   -- Fix highlight if filterText is not the same to vim_item.abbr.
+   if score > 0 then
+-    local vim_item = self:get_vim_item(self.source_offset)
+-    filter_text = vim_item.abbr or vim_item.word
+-    if not checked[filter_text] then
+-      local diff = self.source_offset - self.offset
+-      _, matches = matcher.match(input:sub(1 + diff), filter_text, option)
+-    end
++    self.match_view_args_ret = {
++      input = input,
++      word = filter_text,
++      option = option,
++      matches = matches,
++    }
+   end
+ 
+-  return { score = score, matches = matches }
++  return { score = score, matches = matches, _word = filter_text }
++end
++
++---@param view string
++entry.get_view_matches = function(self, view)
++  if self.match_view_args_ret then
++    if self.match_view_args_ret.word == view then
++      return self.match_view_args_ret.matches
++    end
++    self.match_view_args_ret.word = view
++    local input = self.match_view_args_ret.input
++    local diff = self.source_offset - self.offset
++    if diff > 0 then
++      input = input:sub(1 + diff)
++    end
++    local _, matches = matcher.match(input, view, self.match_view_args_ret.option)
++    self.match_view_args_ret.matches = matches
++    return matches
++  end
+ end
+ 
+ ---@deprecated use entry.completion_item instead
+diff --git a/lua/cmp/view/custom_entries_view.lua b/lua/cmp/view/custom_entries_view.lua
+index 500fe2bbd..d62625d45 100644
+--- a/lua/cmp/view/custom_entries_view.lua
++++ b/lua/cmp/view/custom_entries_view.lua
+@@ -80,7 +80,7 @@ custom_entries_view.new = function()
+             o = o + v[field].bytes + (self.column_width[field] - v[field].width) + 1
+           end
+ 
+-          for _, m in ipairs(e.matches or {}) do
++          for _, m in ipairs(e:get_view_matches(v.abbr.text) or {}) do
+             vim.api.nvim_buf_set_extmark(buf, custom_entries_view.ns, i, a + m.word_match_start - 1, {
+               end_line = i,
+               end_col = a + m.word_match_end,
+diff --git a/lua/cmp/view/wildmenu_entries_view.lua b/lua/cmp/view/wildmenu_entries_view.lua
+index f93f2fd32..9ddf5d14a 100644
+--- a/lua/cmp/view/wildmenu_entries_view.lua
++++ b/lua/cmp/view/wildmenu_entries_view.lua
+@@ -74,7 +74,7 @@ wildmenu_entries_view.new = function()
+             })
+           end
+ 
+-          for _, m in ipairs(e.matches or {}) do
++          for _, m in ipairs(e:get_view_matches(view.abbr.text) or {}) do
+             vim.api.nvim_buf_set_extmark(buf, wildmenu_entries_view.ns, 0, self.offsets[i] + m.word_match_start - 1, {
+               end_line = 0,
+               end_col = self.offsets[i] + m.word_match_end,

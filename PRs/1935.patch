@@ -1,0 +1,24 @@
+From f1fc9af4a216fd1662a46f6d25a40449dad58776 Mon Sep 17 00:00:00 2001
+From: Jaehwang Jung <tomtomjhj@gmail.com>
+Date: Fri, 17 May 2024 23:55:00 +0900
+Subject: [PATCH] perf: use builtin for key normalization
+
+---
+ lua/cmp/utils/keymap.lua | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/lua/cmp/utils/keymap.lua b/lua/cmp/utils/keymap.lua
+index 5ab0be78e..c1196f9d8 100644
+--- a/lua/cmp/utils/keymap.lua
++++ b/lua/cmp/utils/keymap.lua
+@@ -16,7 +16,9 @@ end
+ ---Normalize key sequence.
+ ---@param keys string
+ ---@return string
+-keymap.normalize = function(keys)
++keymap.normalize = vim.fn.has('nvim-0.8') == 1 and function(keys)
++  return vim.fn.keytrans(keymap.t(keys))
++end or function(keys)
+   local normalize_buf = buffer.ensure('cmp.util.keymap.normalize')
+   vim.api.nvim_buf_set_keymap(normalize_buf, 't', keys, '<Plug>(cmp.utils.keymap.normalize)', {})
+   for _, map in ipairs(vim.api.nvim_buf_get_keymap(normalize_buf, 't')) do

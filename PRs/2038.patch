@@ -1,0 +1,48 @@
+From b4c0e413fa92431c682764f22fe2a168d7c115d8 Mon Sep 17 00:00:00 2001
+From: IguanaCucumber <sacha.fazzari@protonmail.com>
+Date: Fri, 13 Sep 2024 14:37:23 +0000
+Subject: [PATCH 1/2] fix(utils): Do not call callback if type(callback) ==
+ "table"
+
+---
+ lua/cmp/utils/event.lua | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/lua/cmp/utils/event.lua b/lua/cmp/utils/event.lua
+index 662d5731e..82797afbe 100644
+--- a/lua/cmp/utils/event.lua
++++ b/lua/cmp/utils/event.lua
+@@ -44,7 +44,9 @@ end
+ ---@param name string
+ event.emit = function(self, name, ...)
+   for _, callback in ipairs(self.events[name] or {}) do
+-    callback(...)
++    if not type(callback) == "table" then
++      callback(...)
++    end
+   end
+ end
+ 
+
+From a3f18ac3017bd0a4a78243c129644883d1b23bf1 Mon Sep 17 00:00:00 2001
+From: IguanaCucumber <sacha.fazzari@protonmail.com>
+Date: Fri, 13 Sep 2024 15:41:10 +0000
+Subject: [PATCH 2/2] fix(utils): improve type checking
+
+---
+ lua/cmp/utils/event.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lua/cmp/utils/event.lua b/lua/cmp/utils/event.lua
+index 82797afbe..15803640f 100644
+--- a/lua/cmp/utils/event.lua
++++ b/lua/cmp/utils/event.lua
+@@ -44,7 +44,7 @@ end
+ ---@param name string
+ event.emit = function(self, name, ...)
+   for _, callback in ipairs(self.events[name] or {}) do
+-    if not type(callback) == "table" then
++    if type(callback) == "function" then
+       callback(...)
+     end
+   end

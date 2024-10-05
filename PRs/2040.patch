@@ -1,0 +1,26 @@
+From 83c7e1e2f0d69822dadb0e231732019bc825a2d2 Mon Sep 17 00:00:00 2001
+From: marcinmdev <marcin@insanet.pl>
+Date: Wed, 18 Sep 2024 10:46:13 +0200
+Subject: [PATCH] fix missing required fields in formatting config
+
+---
+ lua/cmp/types/cmp.lua | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/lua/cmp/types/cmp.lua b/lua/cmp/types/cmp.lua
+index e42dcc41b..fe49c28ed 100644
+--- a/lua/cmp/types/cmp.lua
++++ b/lua/cmp/types/cmp.lua
+@@ -151,9 +151,9 @@ cmp.ItemField = {
+ ---@field public comparators cmp.Comparator[]
+ 
+ ---@class cmp.FormattingConfig
+----@field public fields cmp.ItemField[]
+----@field public expandable_indicator boolean
+----@field public format fun(entry: cmp.Entry, vim_item: vim.CompletedItem): vim.CompletedItem
++---@field public fields? cmp.ItemField[]
++---@field public expandable_indicator? boolean
++---@field public format? fun(entry: cmp.Entry, vim_item: vim.CompletedItem): vim.CompletedItem
+ 
+ ---@class cmp.SnippetConfig
+ ---@field public expand fun(args: cmp.SnippetExpansionParams)

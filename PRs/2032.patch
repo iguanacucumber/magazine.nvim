@@ -1,0 +1,35 @@
+From 90e60d2e7d39bf968f0915d71ec42977d22a6393 Mon Sep 17 00:00:00 2001
+From: ADoyle <adoyle.h@gmail.com>
+Date: Mon, 2 Sep 2024 03:48:09 +0800
+Subject: [PATCH] fix: the height of docs view get wrong when content lines get
+ wrapped
+
+When the wrap_at option not pass to vim.lsp.util._make_floating_popup_size(),
+it calculates height with unwrapped lines.
+Actually the nvim-cmp shows content with wrapped lines in docs view.
+So when the content has very long text, the calculated height is smaller than
+actually required in docs view.
+---
+ lua/cmp/view/docs_view.lua | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/lua/cmp/view/docs_view.lua b/lua/cmp/view/docs_view.lua
+index 346e98754..c3000f5f2 100644
+--- a/lua/cmp/view/docs_view.lua
++++ b/lua/cmp/view/docs_view.lua
+@@ -58,6 +58,7 @@ docs_view.open = function(self, e, view)
+     local opts = {
+       max_width = max_width - border_info.horiz,
+     }
++    opts.wrap_at = opts.max_width
+     if documentation.max_height > 0 then
+       opts.max_height = documentation.max_height
+     end
+@@ -71,6 +72,7 @@ docs_view.open = function(self, e, view)
+   local opts = {
+     max_width = max_width - border_info.horiz,
+   }
++  opts.wrap_at = opts.max_width
+   if documentation.max_height > 0 then
+     opts.max_height = documentation.max_height - border_info.vert
+   end

@@ -1,0 +1,27 @@
+From 731d98b8690ee35d9683634d1987ddad37adfa31 Mon Sep 17 00:00:00 2001
+From: Roey Darwish Dror <roey.ghost@gmail.com>
+Date: Tue, 1 Oct 2024 07:18:33 +0300
+Subject: [PATCH] Avoid calling del_extmark on non existing buffer
+
+This fixes a problem with Neogit is discussed here:
+
+https://github.com/NeogitOrg/neogit/discussions/1492
+---
+ lua/cmp/view/ghost_text_view.lua | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/lua/cmp/view/ghost_text_view.lua b/lua/cmp/view/ghost_text_view.lua
+index 19c951359..c0a4f0e5c 100644
+--- a/lua/cmp/view/ghost_text_view.lua
++++ b/lua/cmp/view/ghost_text_view.lua
+@@ -32,7 +32,9 @@ ghost_text_view.new = function()
+   vim.api.nvim_set_decoration_provider(ghost_text_view.ns, {
+     on_win = function(_, win)
+       if self.extmark_id then
+-        vim.api.nvim_buf_del_extmark(self.extmark_buf, ghost_text_view.ns, self.extmark_id)
++        if vim.api.nvim_buf_is_loaded(self.extmark_buf) then
++          vim.api.nvim_buf_del_extmark(self.extmark_buf, ghost_text_view.ns, self.extmark_id)
++        end
+         self.extmark_id = nil
+       end
+ 
