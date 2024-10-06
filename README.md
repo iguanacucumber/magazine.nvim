@@ -1,3 +1,28 @@
+# About this fork
+
+## magazine.nvim is a "beta" nvim-cmp to fix bugs & implement new features early 
+
+First of all I am not hard forking nvim-cmp. All i did was implementing alot of PRs see [merged.md](https://github.com/iguanacucumber/magazine.nvim/blob/main/merged.md)
+
+All credit should go towards the people who made those pull requests.
+
+I made this plugin because i really liked (yioneko's performance fork)[https://github.com/hrsh7th/nvim-cmp/pull/1980] and that i had a really annoying bug which i made a (PR)[https://github.com/hrsh7th/nvim-cmp/pull/2038] for. While waiting for my PR to get reviewed i changed nvim-cmp in my config to use my own fork from this PR. And then i told myself why wouldn't i also include yioneko's performance fork then i added other PRs and it resulted into this. At first i kept this to myself, but why not share it, it help others with annoying bugs.
+
+The goal of magazine.nvim is NOT to replace nvim-cmp, it's goal is to fix annoying bugs & implement new features early and more generaly to be like a "beta" version of nvim-cmp relieving burden from hrsh7th ( nvim-cmp maintainer & author ) by upstreaming changes to the main repo.
+
+btw i called magazine.nvim like this just to avoid confusion with the original project, the fork from my PR and the "new" fork with changes.
+
+If you have any bugs from those PRs/changes, create an issue on this repo, so we'll be able to make changes quicker. 
+
+## before switching to this fork do this:
+
+```lua
+{
+  "iguanacucumber/magazine.nvim",
+  name = "nvim-cmp", -- Otherwise highlighting gets messed up
+},
+```
+
 # nvim-cmp (fork)
 
 A completion engine plugin for neovim written in Lua.
@@ -141,7 +166,3 @@ Have a look at the [Wiki](https://github.com/hrsh7th/nvim-cmp/wiki/List-of-sourc
 ### Where can I find advanced configuration examples?
 
 See the [Wiki](https://github.com/hrsh7th/nvim-cmp/wiki).
-
-### Where can I see changes from this fork?
-
-See [merged.md](https://github.com/iguanacucumber/magazine.nvim/blob/main/merged.md)
