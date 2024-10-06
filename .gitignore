@@ -1,4 +1,6 @@
 doc/tags
 utils/stylua
 .DS_Store
+*.orig
+*.rej
 
