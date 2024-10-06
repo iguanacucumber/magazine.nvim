@@ -1,0 +1,109 @@
+From 6d8ac543fd257df534a0fe74578b0ebcc6c97b36 Mon Sep 17 00:00:00 2001
+From: dmun <davidru01@live.nl>
+Date: Sun, 30 Jun 2024 18:20:39 +0200
+Subject: [PATCH 1/2] feat(view): allow hl_group to be a table
+
+---
+ lua/cmp/entry.lua                    |  2 +-
+ lua/cmp/types/vim.lua                |  6 +++---
+ lua/cmp/view/custom_entries_view.lua | 28 +++++++++++++++++++++-------
+ 3 files changed, 25 insertions(+), 11 deletions(-)
+
+diff --git a/lua/cmp/entry.lua b/lua/cmp/entry.lua
+index b048eefcf..552a17c38 100644
+--- a/lua/cmp/entry.lua
++++ b/lua/cmp/entry.lua
+@@ -201,7 +201,7 @@ end
+ ---Return view information.
+ ---@param suggest_offset integer
+ ---@param entries_buf integer The buffer this entry will be rendered into.
+----@return { abbr: { text: string, bytes: integer, width: integer, hl_group: string }, kind: { text: string, bytes: integer, width: integer, hl_group: string }, menu: { text: string, bytes: integer, width: integer, hl_group: string } }
++---@return { abbr: { text: string, bytes: integer, width: integer, hl_group: string|table }, kind: { text: string, bytes: integer, width: integer, hl_group: string|table }, menu: { text: string, bytes: integer, width: integer, hl_group: string|table } }
+ entry.get_view = function(self, suggest_offset, entries_buf)
+   local item = self:get_vim_item(suggest_offset)
+   return self.cache:ensure('get_view:' .. tostring(entries_buf), function()
+diff --git a/lua/cmp/types/vim.lua b/lua/cmp/types/vim.lua
+index 8532534c6..171a09315 100644
+--- a/lua/cmp/types/vim.lua
++++ b/lua/cmp/types/vim.lua
+@@ -7,9 +7,9 @@
+ ---@field public empty 1|nil
+ ---@field public dup 1|nil
+ ---@field public id any
+----@field public abbr_hl_group string|nil
+----@field public kind_hl_group string|nil
+----@field public menu_hl_group string|nil
++---@field public abbr_hl_group string|table|nil
++---@field public kind_hl_group string|table|nil
++---@field public menu_hl_group string|table|nil
+ 
+ ---@class vim.Position 1-based index
+ ---@field public row integer
+diff --git a/lua/cmp/view/custom_entries_view.lua b/lua/cmp/view/custom_entries_view.lua
+index e88941604..935d69551 100644
+--- a/lua/cmp/view/custom_entries_view.lua
++++ b/lua/cmp/view/custom_entries_view.lua
+@@ -70,13 +70,27 @@ custom_entries_view.new = function()
+             if field == types.cmp.ItemField.Abbr then
+               a = o
+             end
+-            vim.api.nvim_buf_set_extmark(buf, custom_entries_view.ns, i, o, {
+-              end_line = i,
+-              end_col = o + v[field].bytes,
+-              hl_group = v[field].hl_group,
+-              hl_mode = 'combine',
+-              ephemeral = true,
+-            })
++
++            if type(v[field].hl_group) == 'table' then
++              for _, extmark in ipairs(v[field].hl_group) do
++                vim.api.nvim_buf_set_extmark(buf, custom_entries_view.ns, i, o + extmark[1], {
++                  end_line = i,
++                  end_col = o + extmark[2],
++                  hl_group = extmark[3],
++                  hl_eol = false,
++                  ephemeral = true,
++                })
++              end
++            else
++              vim.api.nvim_buf_set_extmark(buf, custom_entries_view.ns, i, o, {
++                end_line = i,
++                end_col = o + v[field].bytes,
++                hl_group = v[field].hl_group,
++                hl_mode = 'combine',
++                ephemeral = true,
++              })
++            end
++
+             o = o + v[field].bytes + (self.column_width[field] - v[field].width) + 1
+           end
+ 
+
+From fe5e98076ef7155109c3790b8b79fe3b0b29fef7 Mon Sep 17 00:00:00 2001
+From: dmun <davidru01@live.nl>
+Date: Sun, 30 Jun 2024 21:03:56 +0200
+Subject: [PATCH 2/2] feat: improve table field naming
+
+---
+ lua/cmp/view/custom_entries_view.lua | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/lua/cmp/view/custom_entries_view.lua b/lua/cmp/view/custom_entries_view.lua
+index 935d69551..97201524b 100644
+--- a/lua/cmp/view/custom_entries_view.lua
++++ b/lua/cmp/view/custom_entries_view.lua
+@@ -73,10 +73,11 @@ custom_entries_view.new = function()
+ 
+             if type(v[field].hl_group) == 'table' then
+               for _, extmark in ipairs(v[field].hl_group) do
+-                vim.api.nvim_buf_set_extmark(buf, custom_entries_view.ns, i, o + extmark[1], {
++                local hl_start, hl_end = unpack(extmark.range)
++                vim.api.nvim_buf_set_extmark(buf, custom_entries_view.ns, i, o + hl_start, {
+                   end_line = i,
+-                  end_col = o + extmark[2],
+-                  hl_group = extmark[3],
++                  end_col = o + hl_end,
++                  hl_group = extmark[1],
+                   hl_eol = false,
+                   ephemeral = true,
+                 })
