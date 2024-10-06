@@ -22,6 +22,6 @@
 - Check for complete pattern matches later in the target text #1900
 
 ## Feat
-<!-- - @ feat: Refactor compare.scopes #2007 -->
+- @ feat: Refactor compare.scopes #2007
 - Allow comparators access to the complete list of entries #1894
 
