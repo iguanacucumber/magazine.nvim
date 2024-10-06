@@ -1,0 +1,24 @@
+From cf6311ec271bf1fd75e63e7359454e9d18f07ab6 Mon Sep 17 00:00:00 2001
+From: Andre Toerien <andre.toerien8@gmail.com>
+Date: Tue, 16 Jul 2024 14:11:27 +0200
+Subject: [PATCH] fixup! fix: remove deprecated use of
+ vim.tbl_add_reverse_lookup (#1931)
+
+---
+ lua/cmp/types/lsp.lua | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/lua/cmp/types/lsp.lua b/lua/cmp/types/lsp.lua
+index 65d6301ec..66f836a11 100644
+--- a/lua/cmp/types/lsp.lua
++++ b/lua/cmp/types/lsp.lua
+@@ -202,7 +202,8 @@ lsp.CompletionItemKind = {
+   Operator = 24,
+   TypeParameter = 25,
+ }
+-for k, v in pairs(lsp.CompletionItemKind) do
++for _, k in ipairs(vim.tbl_keys(lsp.CompletionItemKind)) do
++  local v = lsp.CompletionItemKind[k]
+   lsp.CompletionItemKind[v] = k
+ end
+ 
