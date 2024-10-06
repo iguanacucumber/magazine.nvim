@@ -588,6 +588,11 @@ sources~
   List of the sources and their configurations to use.
   The order of the sources determines their order in the completion results.
 
+                                          *cmp-config.sources[n].enabled*
+sources[n].enabled~
+  `boolean | fun(ctx: cmp.Source.context): boolean`
+  Whether this source should be enabled.
+
                                                     *cmp-config.sources[n].name*
 sources[n].name~
   `string`

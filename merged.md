@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > When i use a '@' before a PR it means that i have adapted the PR to fit with the other PRs, (see the PRs folder)
-> These won't have a patch file in the PRs folder
+> Therefore these PRs won't have a patch file for them in the PRs folder
 
 ## Perf
 - perf: improve for source providing huge list of items #1980
@@ -29,5 +29,6 @@
 - @ feat: Refactor compare.scopes #2007
 - feat(ghost_text): Added custom multi-line snippets ghost_text support #2001
 - feat: allow more completion highlight control #1972
-- Allow comparators access to the complete list of entries #1894
+- @ Allow comparators access to the complete list of entries #1894
+- @ feat: enabled for sources #1314
 
