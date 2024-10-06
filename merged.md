@@ -24,5 +24,6 @@
 
 ## Feat
 - @ feat: Refactor compare.scopes #2007
+- feat(ghost_text): Added custom multi-line snippets ghost_text support #2001
 - Allow comparators access to the complete list of entries #1894
 
