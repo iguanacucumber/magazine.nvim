@@ -1,8 +1,8 @@
 # Merged PRs from [nvim-cmp](https://github.com/hrsh7th/nvim-cmp)
 
 > [!NOTE]
-> When i use a '@' before a PR it means that i have adapted the PR to fit with the other PRs, (see the PRs folder)
-> Therefore these PRs won't have a patch file for them in the PRs folder
+> When i add a '@' before a PR it means that i have adapted the PR to fit with the other PRs
+> Therefore these PRs won't have a patch file for them in the PRs folder (this folder contains unedited patch files from PRs from nvim-cmp)
 
 ## Perf
 - perf: improve for source providing huge list of items #1980
@@ -31,5 +31,6 @@
 - feat(ghost_text): Added custom multi-line snippets ghost_text support #2001
 - feat: allow more completion highlight control #1972
 - @ Allow comparators access to the complete list of entries #1894
+- @ Add option to not reverse select_next_item on bottom_up list (#1346) #1711
 - @ feat: enabled for sources #1314
 

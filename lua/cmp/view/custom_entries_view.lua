@@ -330,7 +330,7 @@ end
 custom_entries_view.select_next_item = function(self, option)
   if self:visible() then
     local cursor = self:get_selected_index()
-    local is_top_down = self:is_direction_top_down()
+    local is_top_down = self:is_direction_top_down() or option.preserve_mapping_verticality
     local last = #self.entries
 
     if not self.entries_win:option('cursorline') then
@@ -367,7 +367,7 @@ end
 custom_entries_view.select_prev_item = function(self, option)
   if self:visible() then
     local cursor = self:get_selected_index()
-    local is_top_down = self:is_direction_top_down()
+    local is_top_down = self:is_direction_top_down() or option.preserve_mapping_verticality
     local last = #self.entries
 
     if not self.entries_win:option('cursorline') then
