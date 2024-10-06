@@ -23,6 +23,7 @@
 - Fix completion menu showing over the cmd win #1904
 - Check for complete pattern matches later in the target text #1900
 - @ Use get_word so that the word is the same as in core.confirm #1860 (version from @liskin)
+- fix(bordered): respect max_width and max_height #1859
 
 ## Feat
 - @ feat: Refactor compare.scopes #2007

@@ -1,0 +1,22 @@
+From 1a95097c7ec87d9107c3942e025a1e214c764007 Mon Sep 17 00:00:00 2001
+From: Wadii Hajji <hajji.wadii@yahoo.fr>
+Date: Fri, 22 Mar 2024 13:15:12 +0100
+Subject: [PATCH] fix(bordered): respect max_width and max_height
+
+---
+ lua/cmp/config/window.lua | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/lua/cmp/config/window.lua b/lua/cmp/config/window.lua
+index 2484c4626..76beed1b9 100644
+--- a/lua/cmp/config/window.lua
++++ b/lua/cmp/config/window.lua
+@@ -10,6 +10,8 @@ window.bordered = function(opts)
+     col_offset = opts.col_offset or 0,
+     side_padding = opts.side_padding or 1,
+     scrollbar = opts.scrollbar == nil and true or opts.scrollbar,
++    max_width = opts.max_width or 0,
++    max_height = opts.max_height or 0,
+   }
+ end
+ 
