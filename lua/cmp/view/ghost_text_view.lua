@@ -102,6 +102,12 @@ ghost_text_view.text_gen = function(self, line, cursor_col)
   if self.entry:get_completion_item().insertTextFormat == types.lsp.InsertTextFormat.Snippet then
     word = tostring(snippet.parse(word))
   end
+
+  local irange = self.entry:get_insert_range()
+  if irange and self.entry.source_insert_range.start.line == irange.start.line then
+    word = string.sub(line, self.entry:get_offset(), irange.start.character) .. word
+  end
+
   local word_clen = vim.str_utfindex(word)
   local cword = string.sub(line, self.entry.offset, cursor_col)
   local cword_clen = vim.str_utfindex(cword)
