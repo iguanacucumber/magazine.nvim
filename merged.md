@@ -15,6 +15,7 @@
 - fix(utils): Only call callback if type(callback) == "function" #2038
 - fix: the height of docs view get wrong when content lines get wrapped #2032
 - fix: The items within the view of Completion are in the wrong order. #2020
+- Keep empty lines when showing ghost_text #2002
 <!-- - @ Use keyword_pattern for is_symbol check #1975  -->
 - Fix misc.merge() #1956
 - fixup! fix: remove deprecated use of vim.tbl_add_reverse_lookup (#1931) #1991

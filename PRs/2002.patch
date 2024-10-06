@@ -1,0 +1,22 @@
+From 24dbc61aedc3158d919ec08019dd5d87714daaf3 Mon Sep 17 00:00:00 2001
+From: luozhiya <luozhiya@petalmail.com>
+Date: Sun, 28 Jul 2024 11:19:50 +0800
+Subject: [PATCH] Keep empty lines when showing ghost_text
+
+---
+ lua/cmp/view/ghost_text_view.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lua/cmp/view/ghost_text_view.lua b/lua/cmp/view/ghost_text_view.lua
+index 19c951359..9ea815f12 100644
+--- a/lua/cmp/view/ghost_text_view.lua
++++ b/lua/cmp/view/ghost_text_view.lua
+@@ -61,7 +61,7 @@ ghost_text_view.new = function()
+       local text = self.text_gen(self, line, col)
+       if #text > 0 then
+         local virt_lines = {}
+-        for _, l in ipairs(vim.fn.split(text, '\n')) do
++        for _, l in ipairs(vim.fn.split(text, '\n', true)) do
+           table.insert(virt_lines, { { l, type(c) == 'table' and c.hl_group or 'Comment' } })
+         end
+         local first_line = table.remove(virt_lines, 1)
