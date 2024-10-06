@@ -17,7 +17,7 @@
 - fix: The items within the view of Completion are in the wrong order. #2020
 <!-- - @ Use keyword_pattern for is_symbol check #1975  -->
 - Fix misc.merge() #1956
-<!-- - @ fixup! fix: remove deprecated use of vim.tbl_add_reverse_lookup (#1931) #1991 -->
+- fixup! fix: remove deprecated use of vim.tbl_add_reverse_lookup (#1931) #1991
 - Fix completion menu showing over the cmd win #1904
 - Check for complete pattern matches later in the target text #1900
 
