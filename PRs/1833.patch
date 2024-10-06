@@ -1,0 +1,24 @@
+From d884a049bb66722668ebe5de97f341327e8422cf Mon Sep 17 00:00:00 2001
+From: Aleksandr Berkhmiller <al.berhmiller@gmail.com>
+Date: Wed, 21 Feb 2024 11:08:29 +0700
+Subject: [PATCH] fix: issue#1832
+
+---
+ lua/cmp/entry.lua | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/lua/cmp/entry.lua b/lua/cmp/entry.lua
+index 09946f201..1defbd00e 100644
+--- a/lua/cmp/entry.lua
++++ b/lua/cmp/entry.lua
+@@ -434,6 +434,10 @@ entry.get_documentation = function(self)
+   local item = self:get_completion_item()
+ 
+   local documents = {}
++  
++  if type(item.detail) == 'table' then
++    item.detail = item.detail[1]
++  end
+ 
+   -- detail
+   if item.detail and item.detail ~= '' then
