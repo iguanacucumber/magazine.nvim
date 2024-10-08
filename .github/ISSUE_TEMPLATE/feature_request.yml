@@ -1,0 +1,9 @@
+name: Feature Request
+description: Propose a Feature
+labels: [Feature]
+body:
+  - type: textarea
+    attributes:
+      label: "What feature do you feel is missing or should be added"
+    validations:
+      required: true
