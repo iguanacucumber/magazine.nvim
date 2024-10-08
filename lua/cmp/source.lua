@@ -79,7 +79,7 @@ end
 ---Get fetching time
 source.get_fetching_time = function(self)
   if self.status == source.SourceStatus.FETCHING then
-    return vim.uv.now() - self.context.time or vim.loop.now() - self.context.time
+    return (vim.uv or vim.loop).now() - self.context.time
   end
   return 100 * 1000 -- return pseudo time if source isn't fetching.
 end

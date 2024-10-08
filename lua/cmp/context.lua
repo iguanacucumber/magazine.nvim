@@ -44,7 +44,7 @@ context.new = function(prev_context, option)
   self.prev_context = prev_context or context.empty()
   self.option = option or { reason = types.cmp.ContextReason.None }
   self.filetype = vim.api.nvim_get_option_value('filetype', { buf = 0 })
-  self.time = vim.uv.now() or vim.loop.now()
+  self.time = (vim.uv or vim.loop).now()
   self.bufnr = vim.api.nvim_get_current_buf()
 
   local cursor = api.get_cursor()
