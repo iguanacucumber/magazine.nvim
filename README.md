@@ -2,7 +2,7 @@
 
 ## magazine.nvim is a "beta" nvim-cmp to fix bugs & implement new features early 
 
-First of all I am not hard forking nvim-cmp. All i did was implementing alot of PRs see [merged.md](https://github.com/iguanacucumber/magazine.nvim/blob/main/merged.md)
+First of all I am not hard forking nvim-cmp. All i did was implementing alot of PRs see [merged.md](https://github.com/iguanacucumber/magazine.nvim/blob/main/merged.md) & made some changes see [changes.md](https://github.com/iguanacucumber/magazine.nvim/blob/main/changes.md)
 
 All credit should go towards the people who made those pull requests.
 
