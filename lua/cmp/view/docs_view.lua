@@ -66,7 +66,11 @@ docs_view.open = function(self, e, view)
   end
 
   -- Set buffer as not modified, so it can be removed without errors
-  vim.api.nvim_buf_set_option(self.window:get_buffer(), 'modified', false)
+  if vim.fn.has('nvim-0.10') == 1 then
+    vim.api.nvim_set_option_value('modified', false, { buf = self.window:get_buffer() })
+  else
+    vim.api.nvim_buf_set_option(self.window:get_buffer(), 'modified', false)
+  end
 
   -- Calculate window size.
   local opts = {

@@ -52,7 +52,7 @@ end
 compare.recently_used = setmetatable({
   records = {},
   add_entry = function(self, e)
-    self.records[e.completion_item.label] = vim.loop.now()
+    self.records[e.completion_item.label] = vim.uv.now() or vim.loop.now()
   end,
 }, {
   ---@type fun(self: table, entry1: cmp.Entry, entry2: cmp.Entry): boolean|nil

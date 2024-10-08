@@ -61,11 +61,11 @@ async.throttle = function(fn, timeout)
       local args = { ... }
 
       if time == nil then
-        time = vim.loop.now()
+        time = vim.uv.now() or vim.loop.now()
       end
       self.stop(false)
       self.running = true
-      timer:start(math.max(1, self.timeout - (vim.loop.now() - time)), 0, function()
+      timer:start(math.max(1, self.timeout - (vim.uv.now() - time or vim.loop.now() - time)), 0, function()
         vim.schedule(function()
           time = nil
           local ret = fn(unpack(args))
@@ -116,7 +116,7 @@ async.timeout = function(fn, timeout)
       fn(...)
     end
   end
-  timer = vim.loop.new_timer()
+  timer = vim.uv.new_timer() or vim.loop.new_timer()
   timer:start(timeout, 0, function()
     callback()
   end)
@@ -176,7 +176,7 @@ end
 
 local Scheduler = {}
 Scheduler._queue = {}
-Scheduler._executor = assert(vim.loop.new_check())
+Scheduler._executor = assert(vim.uv.new_check() or vim.loop.new_check())
 
 function Scheduler.step()
   local budget = config.get().performance.async_budget * 1e6
