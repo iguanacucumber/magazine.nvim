@@ -110,7 +110,7 @@ docs_view.open = function(self, e, view)
     width = width,
     height = height,
     row = view.row,
-    col = col,
+    col = col + documentation.col_offset,
     border = documentation.border,
     zindex = documentation.zindex or 50,
   }
@@ -118,7 +118,7 @@ docs_view.open = function(self, e, view)
 
   -- Correct left-col for scrollbar existence.
   if left then
-    style.col = style.col - self.window:info().scrollbar_offset
+    style.col = style.col - self.window:info().scrollbar_offset - documentation.col_offset
     self.window:open(style)
   end
 end

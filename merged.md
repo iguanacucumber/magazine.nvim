@@ -32,5 +32,6 @@
 - feat: allow more completion highlight control #1972
 - @ Allow comparators access to the complete list of entries #1894
 - @ Add option to not reverse select_next_item on bottom_up list (#1346) #1711
+- @ feat: add col_offset option for doc view #1528
 - @ feat: enabled for sources #1314
 

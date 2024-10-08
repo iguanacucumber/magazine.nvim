@@ -120,6 +120,7 @@ return function()
         border = { '', '', '', ' ', '', '', '', ' ' },
         winhighlight = 'FloatBorder:NormalFloat',
         winblend = vim.o.pumblend,
+        col_offset = 0,
       },
     },
   }
