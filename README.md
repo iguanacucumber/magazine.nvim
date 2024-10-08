@@ -6,7 +6,7 @@ First of all I am not hard forking nvim-cmp. All i did was implementing alot of 
 
 All credit should go towards the people who made those pull requests.
 
-I made this plugin because i really liked (yioneko's performance fork)[https://github.com/hrsh7th/nvim-cmp/pull/1980] and that i had a really annoying bug which i made a (PR)[https://github.com/hrsh7th/nvim-cmp/pull/2038] for. While waiting for my PR to get reviewed i changed nvim-cmp in my config to use my own fork from this PR. And then i told myself why wouldn't i also include yioneko's performance fork then i added other PRs and it resulted into this. At first i kept this to myself, but why not share it, it help others with annoying bugs.
+I made this plugin because i really liked [yioneko's performance fork](https://github.com/hrsh7th/nvim-cmp/pull/1980) and that i had a really annoying bug which i made a [PR](https://github.com/hrsh7th/nvim-cmp/pull/2038) for. While waiting for my PR to get reviewed i changed nvim-cmp in my config to use my own fork from this PR. And then i told myself why wouldn't i also include yioneko's performance fork then i added other PRs and it resulted into this. At first i kept this to myself, but why not share it, it help others with annoying bugs.
 
 The goal of magazine.nvim is NOT to replace nvim-cmp, it's goal is to fix annoying bugs & implement new features early and more generaly to be like a "beta" version of nvim-cmp relieving burden from hrsh7th ( nvim-cmp maintainer & author ) by upstreaming changes to the main repo.
 
