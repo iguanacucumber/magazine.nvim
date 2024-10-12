@@ -488,9 +488,8 @@ end
 ---@return string[]
 entry.get_documentation = function(self)
   local item = self.completion_item
-
   local documents = {}
-  
+
   if type(item.detail) == 'table' then
     item.detail = item.detail[1]
   end
