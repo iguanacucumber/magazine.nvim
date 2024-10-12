@@ -6,6 +6,10 @@
 
 ## Multi commit
 
+### Improve CI
+
+I just updated the actions used, so just see the .github folder
+
 ### Use newer APIs
 
 - eff8483f9d67bfb48d43f25f5fcd3c093db92e55
