@@ -28,7 +28,9 @@ jobs:
         luaVersion: "luajit-2.1.0-beta3"
 
     - name: Setup luarocks
-      uses: leafo/gh-actions-luarocks@v4
+      uses: leafo/gh-actions-luarock
+      with:
+        luarocksVersion: "3.11.1"
 
     - name: Setup tools
       shell: bash
