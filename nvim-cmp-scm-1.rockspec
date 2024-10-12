@@ -1,6 +1,6 @@
 local MODREV, SPECREV = 'scm', '-1'
 rockspec_format = '3.0'
-package = 'nvim-cmp'
+package = 'magazine.nvim'
 version = MODREV .. SPECREV
 
 description = {
@@ -9,7 +9,7 @@ description = {
   detailed = [[
     A completion engine plugin for neovim written in Lua. Completion sources are installed from external repositories and "sourced".
    ]],
-  homepage = 'https://github.com/hrsh7th/nvim-cmp',
+  homepage = 'https://github.com/iguanacucumber/magazine.nvim',
   license = 'MIT',
 }
 
@@ -18,7 +18,7 @@ dependencies = {
 }
 
 source = {
-  url = 'git://github.com/hrsh7th/nvim-cmp',
+  url = 'git://github.com/iguanacucumber/magazine.nvim',
 }
 
 build = {
