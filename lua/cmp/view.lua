@@ -25,11 +25,11 @@ view.new = function()
   local self = setmetatable({}, { __index = view })
   self.resolve_dedup = async.dedup()
   self.is_docs_view_pinned = false
-  self.custom_entries_view = custom_entries_view.new()
+  self.ghost_text_view = ghost_text_view.new()
+  self.custom_entries_view = custom_entries_view.new(ghost_text_view)
   self.native_entries_view = native_entries_view.new()
   self.wildmenu_entries_view = wildmenu_entries_view.new()
   self.docs_view = docs_view.new()
-  self.ghost_text_view = ghost_text_view.new()
   self.event = event.new()
 
   return self
@@ -97,7 +97,7 @@ view.open = function(self, ctx, sources)
           -- source order priority bonus.
           local priority = s:get_source_config().priority or ((#source_group - (i - 1)) * config.get().sorting.priority_weight)
 
-	      local es =s:get_entries(ctx)
+          local es = s:get_entries(ctx)
           for index, e in ipairs(es) do
             e.score = (e.score + priority) * max_view_entries + #es - index
             table.insert(group_entries, e)
