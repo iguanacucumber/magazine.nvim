@@ -5,6 +5,7 @@
 > Therefore these PRs won't have a patch file for them in the PRs folder (this folder contains unedited patch files from PRs from nvim-cmp)
 
 ## Perf
+- @ perf: avoid source slowdown due to unnecessary context switches #2060 
 - perf: improve for source providing huge list of items #1980
 - perf: use builtin for key normalization #1935
 - Do not use sync code in InserEnter #1911
