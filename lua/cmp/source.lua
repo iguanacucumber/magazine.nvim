@@ -128,7 +128,9 @@ source.get_entries = function(self, ctx)
   ---@type cmp.Entry[]
   local entries = {}
   local matching_config = self:get_matching_config()
-  for i, e in ipairs(target_entries) do
+  local filtering_context_budget = config.get().performance.filtering_context_budget / 1000
+  local s = os.clock()
+  for _, e in ipairs(target_entries) do
     local o = e.offset
     if not inputs[o] then
       inputs[o] = string.sub(ctx.cursor_before_line, o)
@@ -146,13 +148,12 @@ source.get_entries = function(self, ctx)
       end
     end
 
-    -- Yield to event loop once in a while to avoid UI freezes
-    -- But avoid yielding too often causing too many context switches
-    if i % 1000 == 999 then
+    if os.clock() - s > filtering_context_budget then
       async.yield()
       if ctx.aborted then
         async.abort()
       end
+      s = os.clock()
     end
   end
 
