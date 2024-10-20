@@ -28,9 +28,8 @@
 
 ## Feat
 - @ feat: Refactor compare.scopes #2007
-- feat(ghost_text): Added custom multi-line snippets ghost_text support #2001
 - feat: allow more completion highlight control #1972
-- @ Multiline snippet ghost text with dynamic window position flip #1955 
+- @ Multiline snippet ghost text with dynamic window position flip #1955
 - @ Allow comparators access to the complete list of entries #1894
 - @ Add option to not reverse select_next_item on bottom_up list (#1346) #1711
 - @ feat: add col_offset option for doc view #1528
