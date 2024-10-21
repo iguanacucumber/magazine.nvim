@@ -23,7 +23,7 @@ If you have any bugs from those PRs/changes, create an issue on this repo, so we
 },
 
 --* the sources *--
-{ "iguanacucumber/mag-nvim-lsp", name = "cmp-nvim-lsp" },
+{ "iguanacucumber/mag-nvim-lsp", name = "cmp-nvim-lsp", opts = {} },
 { "iguanacucumber/mag-nvim-lua", name = "cmp-nvim-lua" },
 { "iguanacucumber/mag-buffer", name = "cmp-buffer" },
 { "iguanacucumber/mag-cmdline", name = "cmp-cmdline" },
