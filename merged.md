@@ -14,6 +14,7 @@
 
 ### Fix
 
+- fix: use \<* notation for keymap.normalize (#2069)
 - Avoid calling del_extmark on non existing buffer #2053
 - fix: don't blow up when nvim_buf_get_lines() returns Blobs #2050
 - fix missing required fields in formatting config #2040
