@@ -43,6 +43,8 @@
 
 ## cmp-* -> mag-*
 
+On every sources i've applied this PR, which checks if a plugins is loaded before loading it: [#1](https://github.com/iguanacucumber/mag-buffer/pull/1) or something similar (like with mag-nvim-lsp)
+
 ### mag-buffer
 
 - @feat: Add show_source option to show the source buffer [#74](https://github.com/hrsh7th/cmp-buffer/pull/74)
