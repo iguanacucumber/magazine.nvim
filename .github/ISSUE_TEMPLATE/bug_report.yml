@@ -17,7 +17,7 @@ body:
         You must provide a working config based on [this](https://github.com/iguanacucumber/magazine.nvim/blob/main/utils/init.lua). Not part of config.
         1. Copy the base minimal config to `~/cmp-repro.lua`
         2. Edit `~/cmp-repro.lua` for reproducing the issue
-        3. Open Neovim with: `nvim -u ~/cmp-repro.vim`
+        3. Open Neovim with: `nvim -u ~/cmp-repro.lua`
         4. Check reproduction step
     validations:
       required: true
