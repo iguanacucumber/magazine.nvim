@@ -7,17 +7,17 @@ body:
     attributes:
       label: documentation & FAQ (at the bottom)
       options:
-        - label: I have checked the [documentation & FAQ (at the bottom)](https://github.com/hrsh7th/nvim-cmp/blob/main/doc/cmp.txt) and it didn't resolve my problem.
+        - label: I have checked the [documentation & FAQ (at the bottom)](https://github.com/iguanacucumber/magazine.nvim/blob/main/doc/cmp.txt) and it didn't resolve my problem.
           required: true
 
   - type: textarea
     attributes:
       label: "Minimal reproducible full config"
       description: |
-        You must provide a working config based on [this](https://github.com/hrsh7th/nvim-cmp/blob/main/utils/vimrc.vim). Not part of config.
-        1. Copy the base minimal config to the `~/cmp-repro.vim`
-        2. Edit `~/cmp-repro.vim` for reproducing the issue
-        3. Open `nvim -u ~/cmp-repro.vim`
+        You must provide a working config based on [this](https://github.com/iguanacucumber/magazine.nvim/blob/main/utils/init.lua). Not part of config.
+        1. Copy the base minimal config to `~/cmp-repro.lua`
+        2. Edit `~/cmp-repro.lua` for reproducing the issue
+        3. Open Neovim with: `nvim -u ~/cmp-repro.vim`
         4. Check reproduction step
     validations:
       required: true
