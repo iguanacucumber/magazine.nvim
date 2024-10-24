@@ -166,7 +166,7 @@ custom_entries_view.open = function(self, offset, entries)
   else
     vim.api.nvim_buf_set_lines(entries_buf, 0, -1, false, lines)
   end
-  if vim.fn.has('nvim-0.10') then
+  if vim.fn.has('nvim-0.10') == 1 then
     vim.api.nvim_set_option_value('modified', false, { buf = entries_buf })
   else
     vim.api.nvim_buf_set_option(entries_buf, 'modified', false)
@@ -311,7 +311,7 @@ custom_entries_view.draw = function(self)
     vim.api.nvim_buf_set_lines(entries_buf, topline, botline, false, texts)
   end
 
-  if vim.fn.has('nvim-0.10') then
+  if vim.fn.has('nvim-0.10') == 1 then
     vim.api.nvim_set_option_value('modified', false, { buf = entries_buf })
   else
     vim.api.nvim_buf_set_option(entries_buf, 'modified', false)
