@@ -6,6 +6,7 @@
 - feature request github issue template
 - utils: vimrc.vim -> init.lua
 - rock: remove SPECREV
+- rock: remove .rockspec file, it wasn't used anyway
 
 ## Multi commit
 
