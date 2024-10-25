@@ -1,7 +1,7 @@
-local MODREV, SPECREV = 'scm', '-1'
+local MODREV, SPECREV = 'scm'
 rockspec_format = '3.0'
 package = 'magazine.nvim'
-version = MODREV .. SPECREV
+version = MODREV
 
 description = {
   summary = 'A completion plugin for neovim',
