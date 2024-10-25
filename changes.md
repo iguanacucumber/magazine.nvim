@@ -5,6 +5,7 @@
 - Use NormalFloat instead of Normal for cmp.config.window.bordered()'s winhighlight #3
 - feature request github issue template
 - utils: vimrc.vim -> init.lua
+- rock: remove SPECREV
 
 ## Multi commit
 
@@ -31,3 +32,7 @@ I just updated the actions used, so just see the .github folder
 #### mag-nvim-lua
 
 - cd1a0bb9d9f90940391bd8af8a036d1cd54feeb1
+
+#### mag-buffer
+
+- 684d571293ef03269267908e9a7a23a40bf91893
