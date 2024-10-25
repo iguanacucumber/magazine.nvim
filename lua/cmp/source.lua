@@ -311,7 +311,9 @@ source.complete = function(self, ctx, callback)
     completion_context = {
       triggerKind = types.lsp.CompletionTriggerKind.Invoked,
     }
-  elseif vim.tbl_contains(self:get_trigger_characters(), before_char) then
+  elseif vim.iter(self:get_trigger_characters()):any(function(...)
+    return ... == before_char
+  end) then
     completion_context = {
       triggerKind = types.lsp.CompletionTriggerKind.TriggerCharacter,
       triggerCharacter = before_char,
@@ -322,7 +324,9 @@ source.complete = function(self, ctx, callback)
         completion_context = {
           triggerKind = types.lsp.CompletionTriggerKind.TriggerForIncompleteCompletions,
         }
-      elseif not vim.tbl_contains({ self.request_offset, self.offset }, offset) then
+      elseif not vim.iter({ self.request_offset, self.offset }):any(function(...)
+        return offset == ...
+      end) then
         completion_context = {
           triggerKind = types.lsp.CompletionTriggerKind.Invoked,
         }

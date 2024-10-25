@@ -139,7 +139,9 @@ compare.locality = setmetatable({
   locality_map = {},
   update = function(self)
     local config = require('cmp').get_config()
-    if not vim.tbl_contains(config.sorting.comparators, compare.locality) then
+    if not vim.iter(config.sorting.comparators):any(function(...)
+      return compare.locality == ...
+    end) then
       return
     end
 
@@ -202,7 +204,9 @@ compare.scopes = setmetatable({
   has_nvim_0_9_features = vim.fn.has('nvim-0.9') == 1,
   update = function(self)
     local config = require('cmp').get_config()
-    if not vim.tbl_contains(config.sorting.comparators, compare.scopes) then
+    if not vim.iter(config.sorting.comparators):any(function(...)
+      return ... == compare.scopes
+    end) then
       return
     end
 

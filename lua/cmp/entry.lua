@@ -252,7 +252,9 @@ end
 ---Return the item is deprecated or not.
 ---@return boolean
 entry.is_deprecated = function(self)
-  return self.completion_item.deprecated or vim.tbl_contains(self.completion_item.tags or {}, types.lsp.CompletionItemTag.Deprecated)
+  return self.completion_item.deprecated or vim.iter(self.completion_item.tags or {}):any(function(...)
+    return types.lsp.CompletionItemTag.Deprecated == ...
+  end)
 end
 
 ---Return view information.

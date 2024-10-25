@@ -245,7 +245,9 @@ misc.redraw = setmetatable({
 }, {
   __call = function(self, force)
     local termcode = vim.api.nvim_replace_termcodes(self.incsearch_redraw_keys, true, true, true)
-    if vim.tbl_contains({ '/', '?' }, vim.fn.getcmdtype()) then
+    if vim.iter({ '/', '?' }):any(function(...)
+      return ... == vim.fn.getcmdtype()
+    end) then
       if vim.o.incsearch then
         return vim.api.nvim_feedkeys(termcode, 'ni', true)
       end

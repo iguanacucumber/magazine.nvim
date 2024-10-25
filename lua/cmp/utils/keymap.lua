@@ -49,7 +49,9 @@ keymap.to_keymap = setmetatable({
   __call = function(self, s)
     return string.gsub(s, '.', function(c)
       for key, chars in pairs(self) do
-        if vim.tbl_contains(chars, c) then
+        if vim.iter(chars):any(function(...)
+          return ... == c
+        end) then
           return key
         end
       end

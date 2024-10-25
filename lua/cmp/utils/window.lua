@@ -304,7 +304,12 @@ window.get_border_info = function(self)
   info.left = new_border[8] == '' and 0 or 1
   info.vert = info.top + info.bottom
   info.horiz = info.left + info.right
-  info.visible = not (vim.tbl_contains({ '', ' ' }, new_border[2]) and vim.tbl_contains({ '', ' ' }, new_border[4]) and vim.tbl_contains({ '', ' ' }, new_border[6]) and vim.tbl_contains({ '', ' ' }, new_border[8]))
+  local function contains(list, element)
+    vim.iter(list):any(function(...)
+      return ... == element
+    end)
+  end
+  info.visible = not (contains({ '', ' ' }, new_border[2]) and contains({ '', ' ' }, new_border[4]) and contains({ '', ' ' }, new_border[6]) and contains({ '', ' ' }, new_border[8]))
   return info
 end
 

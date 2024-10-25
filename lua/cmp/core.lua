@@ -85,7 +85,9 @@ end
 core.get_sources = function(self, filter)
   local f = function(s)
     if type(filter) == 'table' then
-      return vim.tbl_contains(filter, s.status)
+      return vim.iter(filter):any(function(...)
+        return s.status == ...
+      end)
     elseif type(filter) == 'function' then
       return filter(s)
     end
@@ -117,7 +119,9 @@ core.on_keymap = function(self, keys, fallback)
   --Commit character. NOTE: This has a lot of cmp specific implementation to make more user-friendly.
   local chars = keymap.t(keys)
   local e = self.view:get_active_entry()
-  if e and vim.tbl_contains(config.get().confirmation.get_commit_characters(e:get_commit_characters()), chars) then
+  if e and vim.iter(config.get().confirmation.get_commit_characters(e:get_commit_characters())):any(function(...)
+    return chars == ...
+  end) then
     local is_printable = char.is_printable(string.byte(chars, 1))
     self:confirm(e, {
       behavior = is_printable and 'insert' or 'replace',
@@ -165,7 +169,9 @@ core.on_change = function(self, trigger_event)
       self.view:on_change()
       debug.log('changed')
 
-      if vim.tbl_contains(config.get().completion.autocomplete or {}, trigger_event) then
+      if vim.iter(config.get().completion.autocomplete or {}):any(function(...)
+        return trigger_event == ...
+      end) then
         self:complete(ctx)
       else
         self.filter.timeout = self.view:visible() and config.get().performance.throttle or 0
@@ -219,7 +225,9 @@ core.autoindent = function(self, trigger_event, callback)
 
   -- Reset current completion if indentkeys matched.
   for _, key in ipairs(vim.split(vim.bo.indentkeys, ',')) do
-    if vim.tbl_contains({ '=' .. prefix, '0=' .. prefix }, key) then
+    if vim.iter({ '=' .. prefix, '0=' .. prefix }):any(function(...)
+      return key == ...
+    end) then
       self:reset()
       self:set_context(context.empty())
       break
