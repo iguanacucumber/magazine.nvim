@@ -165,7 +165,7 @@ str.escape = function(text, chars)
   while i <= #text do
     local c = string.sub(text, i, i)
     if vim.iter(chars):any(function(...)
-      return chars == c
+      return ... == c
     end) then
       table.insert(escaped, '\\')
       table.insert(escaped, c)
