@@ -1,0 +1,44 @@
+From cf567f59326a0a5c5a88dc656b2ab1036a3c11d2 Mon Sep 17 00:00:00 2001
+From: phanium <nxhsdu@qq.com>
+Date: Sat, 26 Oct 2024 23:59:33 +0800
+Subject: [PATCH] fix: make <c-;> work again
+
+---
+ lua/cmp/utils/keymap.lua      | 4 ++--
+ lua/cmp/utils/keymap_spec.lua | 1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/lua/cmp/utils/keymap.lua b/lua/cmp/utils/keymap.lua
+index b7d151c37..ebf761dc3 100644
+--- a/lua/cmp/utils/keymap.lua
++++ b/lua/cmp/utils/keymap.lua
+@@ -8,7 +8,7 @@ local keymap = {}
+ ---@param keys string
+ ---@return string
+ keymap.t = function(keys)
+-  return (string.gsub(keys, '(<[A-Za-z0-9\\%-%[%]%^@]->)', function(match)
++  return (string.gsub(keys, '(<[A-Za-z0-9\\%-%[%]%^@;]->)', function(match)
+     return vim.api.nvim_eval(string.format([["\%s"]], match))
+   end))
+ end
+@@ -17,7 +17,7 @@ end
+ ---@param keys string
+ ---@return string
+ keymap.normalize = vim.fn.has('nvim-0.8') == 1 and function(keys)
+-    local t = string.gsub(keys, '<([A-Za-z0-9\\%-%[%]%^@]-)>', function(match)
++    local t = string.gsub(keys, '<([A-Za-z0-9\\%-%[%]%^@;]-)>', function(match)
+       -- Use the \<* notation, which distinguishes <C-J> from <NL>, etc.
+       return vim.api.nvim_eval(string.format([["\<*%s>"]], match))
+     end)
+diff --git a/lua/cmp/utils/keymap_spec.lua b/lua/cmp/utils/keymap_spec.lua
+index 959783f34..2df583113 100644
+--- a/lua/cmp/utils/keymap_spec.lua
++++ b/lua/cmp/utils/keymap_spec.lua
+@@ -16,6 +16,7 @@ describe('keymap', function()
+       '<C-^>',
+       '<C-@>',
+       '<C-\\>',
++      '<C-;>',
+       '<Tab>',
+       '<S-Tab>',
+       '<Plug>(example)',

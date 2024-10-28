@@ -14,6 +14,7 @@
 
 ### Fix
 
+- fix: make <c-;> work again [#2073](https://github.com/hrsh7th/nvim-cmp/pull/2073)
 - fix: use \<\* notation for keymap.normalize ([#2069](https://github.com/hrsh7th/nvim-cmp/pull/2069))
 - fix: scrollbar thumb ui issue [#2068](https://github.com/hrsh7th/nvim-cmp/pull/2068)
 - Avoid calling del_extmark on non existing buffer [#2053](https://github.com/hrsh7th/nvim-cmp/pull/2053)
