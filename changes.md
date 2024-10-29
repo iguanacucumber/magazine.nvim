@@ -1,18 +1,35 @@
-# Changes from [nvim-cmp](https://github.com/hrsh7th/nvim-cmp)
+# Changes from [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) & it's sources
+
+## Globally
+
+- improved CI -> updated the actions used and added CI into mag-\* sources
+- made releases for magazine.nvim and every sources (they push to Luarock)
 
 ## Single commit changes
 
+### magazine.nvim
+
 - Use NormalFloat instead of Normal for cmp.config.window.bordered()'s winhighlight #3
 - feature request github issue template
-- utils: vimrc.vim -> init.lua
+- utils: vimrc.vim -> init.lua (kickstart.nvim based)
 - rock: remove SPECREV
 - rock: remove .rockspec file, it wasn't used anyway
 
+### mag-*
+
+- add CI, it's pretty much magazine.nvim CI without integrations tests
+- doc: precise this is a fork
+- add Stylua formating with "" quotes and 2 spaces indenting settings, this does not apply for magazine.nvim
+
+### mag-buffer
+
+- perf: use faster vim.validate
+
+### mag-nvim-lua
+
+- other: Add MIT license (required for Luarock)
+
 ## Multi commit
-
-### Improve CI
-
-I just updated the actions used, so just see the .github folder
 
 ### Use newer APIs like vim.uv and vim.iter instead of vim.loop & vim.tbl\_ when possible
 
