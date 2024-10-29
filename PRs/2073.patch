@@ -1,7 +1,7 @@
 From cf567f59326a0a5c5a88dc656b2ab1036a3c11d2 Mon Sep 17 00:00:00 2001
 From: phanium <nxhsdu@qq.com>
 Date: Sat, 26 Oct 2024 23:59:33 +0800
-Subject: [PATCH] fix: make <c-;> work again
+Subject: [PATCH 1/2] fix: make <c-;> work again
 
 ---
  lua/cmp/utils/keymap.lua      | 4 ++--
@@ -39,6 +39,51 @@ index 959783f34..2df583113 100644
        '<C-@>',
        '<C-\\>',
 +      '<C-;>',
+       '<Tab>',
+       '<S-Tab>',
+       '<Plug>(example)',
+
+From adb0f36cea1c98a83884ffd3076f8de061e8142b Mon Sep 17 00:00:00 2001
+From: phanium <nxhsdu@qq.com>
+Date: Tue, 29 Oct 2024 10:27:51 +0800
+Subject: [PATCH 2/2] fix: also <c-_>
+
+---
+ lua/cmp/utils/keymap.lua      | 4 ++--
+ lua/cmp/utils/keymap_spec.lua | 1 +
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/lua/cmp/utils/keymap.lua b/lua/cmp/utils/keymap.lua
+index ebf761dc3..0fb8692e4 100644
+--- a/lua/cmp/utils/keymap.lua
++++ b/lua/cmp/utils/keymap.lua
+@@ -8,7 +8,7 @@ local keymap = {}
+ ---@param keys string
+ ---@return string
+ keymap.t = function(keys)
+-  return (string.gsub(keys, '(<[A-Za-z0-9\\%-%[%]%^@;]->)', function(match)
++  return (string.gsub(keys, '(<[A-Za-z0-9\\%-%[%]%^@;_]->)', function(match)
+     return vim.api.nvim_eval(string.format([["\%s"]], match))
+   end))
+ end
+@@ -17,7 +17,7 @@ end
+ ---@param keys string
+ ---@return string
+ keymap.normalize = vim.fn.has('nvim-0.8') == 1 and function(keys)
+-    local t = string.gsub(keys, '<([A-Za-z0-9\\%-%[%]%^@;]-)>', function(match)
++    local t = string.gsub(keys, '<([A-Za-z0-9\\%-%[%]%^@;_]-)>', function(match)
+       -- Use the \<* notation, which distinguishes <C-J> from <NL>, etc.
+       return vim.api.nvim_eval(string.format([["\<*%s>"]], match))
+     end)
+diff --git a/lua/cmp/utils/keymap_spec.lua b/lua/cmp/utils/keymap_spec.lua
+index 2df583113..9f60e6345 100644
+--- a/lua/cmp/utils/keymap_spec.lua
++++ b/lua/cmp/utils/keymap_spec.lua
+@@ -17,6 +17,7 @@ describe('keymap', function()
+       '<C-@>',
+       '<C-\\>',
+       '<C-;>',
++      '<C-_>',
        '<Tab>',
        '<S-Tab>',
        '<Plug>(example)',
