@@ -14,6 +14,7 @@
 
 ### Fix
 
+- fix: some symbols can't be mapped correctly #2081 
 - support cpying self-referenced table [#2076](https://github.com/hrsh7th/nvim-cmp/pull/2076)
 - fix: make <c-;> work again [#2073](https://github.com/hrsh7th/nvim-cmp/pull/2073)
 - fix: use \<\* notation for keymap.normalize ([#2069](https://github.com/hrsh7th/nvim-cmp/pull/2069))
