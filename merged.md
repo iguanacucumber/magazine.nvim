@@ -14,7 +14,7 @@
 
 ### Fix
 
-- fix: some symbols can't be mapped correctly #2081 
+- fix: some symbols can't be mapped correctly #2081
 - support cpying self-referenced table [#2076](https://github.com/hrsh7th/nvim-cmp/pull/2076)
 - fix: make <c-;> work again [#2073](https://github.com/hrsh7th/nvim-cmp/pull/2073)
 - fix: use \<\* notation for keymap.normalize ([#2069](https://github.com/hrsh7th/nvim-cmp/pull/2069))
@@ -36,6 +36,7 @@
 
 ### Feat
 
+- @ feat: allow individual hl custamization of scrollbar for docs and menu [#2078](https://github.com/hrsh7th/nvim-cmp/pull/2007)
 - @ feat: Refactor compare.scopes [#2007](https://github.com/hrsh7th/nvim-cmp/pull/2007)
 - feat: allow more completion highlight control [#1972](https://github.com/hrsh7th/nvim-cmp/pull/1972)
 - @ Multiline snippet ghost text with dynamic window position flip [#1955](https://github.com/hrsh7th/nvim-cmp/pull/1955)
