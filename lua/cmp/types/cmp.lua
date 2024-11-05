@@ -188,6 +188,7 @@ cmp.ItemField = {
 ---@class cmp.CustomEntriesViewConfig
 ---@field name 'custom'
 ---@field selection_order 'top_down'|'near_cursor'
+---@field vertical_positioning 'below'|'above'
 ---@field follow_cursor boolean
 
 ---@class cmp.NativeEntriesViewConfig

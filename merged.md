@@ -14,7 +14,7 @@
 
 ### Fix
 
-- fix: some symbols can't be mapped correctly #2081
+- fix: some symbols can't be mapped correctly [#2081](https://github.com/hrsh7th/nvim-cmp/pull/2081)
 - support cpying self-referenced table [#2076](https://github.com/hrsh7th/nvim-cmp/pull/2076)
 - fix: make <c-;> work again [#2073](https://github.com/hrsh7th/nvim-cmp/pull/2073)
 - fix: use \<\* notation for keymap.normalize ([#2069](https://github.com/hrsh7th/nvim-cmp/pull/2069))
@@ -42,6 +42,7 @@
 - @ Multiline snippet ghost text with dynamic window position flip [#1955](https://github.com/hrsh7th/nvim-cmp/pull/1955)
 - @ Allow comparators access to the complete list of entries [#1894](https://github.com/hrsh7th/nvim-cmp/pull/1894)
 - @ Add option to not reverse select_next_item on bottom_up list ([#1346](https://github.com/hrsh7th/nvim-cmp/pull/1346)) [#1711](https://github.com/hrsh7th/nvim-cmp/pull/1711)
+- @ feat: config.view.entries.vertical_positioning = 'above'|'below' [#1701](https://github.com/hrsh7th/nvim-cmp/pull/1701) (integrated with [#1955](https://github.com/hrsh7th/nvim-cmp/pull/1955) from above)
 - @ feat: add col_offset option for doc view [#1528](https://github.com/hrsh7th/nvim-cmp/pull/1528)
 - @ feat: enabled for sources [#1314](https://github.com/hrsh7th/nvim-cmp/pull/1314)
 
