@@ -153,11 +153,11 @@ describe('cmp.core', function()
         },
         {
           encoding = types.lsp.PositionEncodingKind.UTF16,
-          char_size = select(2, vim.str_utfindex(char, UTF16)),
+          char_size = select(2, vim.str_utfindex(char)),
         },
         {
           encoding = types.lsp.PositionEncodingKind.UTF32,
-          char_size = select(1, vim.str_utfindex(char, UTF32)),
+          char_size = select(1, vim.str_utfindex(char)),
         },
       }) do
         it('textEdit & multibyte: ' .. case.encoding, function()
