@@ -86,7 +86,7 @@ lsp.Position = {
     local utf8 = lsp.Position.to_utf8(text, position, from_encoding)
     for index = utf8.character, 0, -1 do
       local ok, utf16index = pcall(function()
-        return select(2, vim.str_utfindex(text, index))
+        return select(2, vim.str_utfindex(text, lsp.PositionEncodingKind.UTF16, index))
       end)
       if ok then
         return { line = utf8.line, character = utf16index }
@@ -109,7 +109,7 @@ lsp.Position = {
     local utf8 = lsp.Position.to_utf8(text, position, from_encoding)
     for index = utf8.character, 0, -1 do
       local ok, utf32index = pcall(function()
-        return select(1, vim.str_utfindex(text, index))
+        return select(1, vim.str_utfindex(text, lsp.PositionEncodingKind.UTF32, index))
       end)
       if ok then
         return { line = utf8.line, character = utf32index }
