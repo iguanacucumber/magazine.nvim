@@ -90,9 +90,9 @@ ghost_text_view.text_gen = function(self, line, cursor_col, entry)
 
   -- Trim cursorline ghost text
   local function trim_text(word)
-    local word_clen = vim.str_utfindex(word)
+    local word_clen = vim.str_utfindex(word, 'utf-8')
     local cword = string.sub(line, entry:get_offset(), cursor_col)
-    local cword_clen = vim.str_utfindex(cword)
+    local cword_clen = vim.str_utfindex(cword, 'utf-8')
     -- Number of characters from entry text (word) to be displayed as ghost thext
     local nchars = word_clen - cword_clen
     -- Missing characters to complete the entry text

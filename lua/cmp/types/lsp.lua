@@ -72,50 +72,36 @@ lsp.Position = {
     return { line = position.line, character = byteindex }
   end,
 
-  ---Convert position to utf16 from specified encoding.
+  ---Convert position to utf-16 or utf-32 from specified encoding.
   ---@param text string
   ---@param position lsp.Position
   ---@param from_encoding? lsp.PositionEncodingKind
+  ---@param to_encoding string
   ---@return lsp.Position
-  to_utf16 = function(text, position, from_encoding)
-    from_encoding = from_encoding or lsp.PositionEncodingKind.UTF16
-    if from_encoding == lsp.PositionEncodingKind.UTF16 then
+  to_utf = function(text, position, from_encoding, to_encoding)
+    from_encoding = from_encoding or lsp.PositionEncodingKind.to_encoding
+    if from_encoding == lsp.PositionEncodingKind.to_encoding then
       return position
     end
 
     local utf8 = lsp.Position.to_utf8(text, position, from_encoding)
     for index = utf8.character, 0, -1 do
-      local ok, utf16index = pcall(function()
-        return select(2, vim.str_utfindex(text, index))
+      local ok, utfindex = pcall(function()
+        return select(2, vim.str_utfindex(text, to_encoding, index))
       end)
       if ok then
-        return { line = utf8.line, character = utf16index }
+        return { line = utf8.line, character = utfindex }
       end
     end
     return position
   end,
 
-  ---Convert position to utf32 from specified encoding.
-  ---@param text string
-  ---@param position lsp.Position
-  ---@param from_encoding? lsp.PositionEncodingKind
-  ---@return lsp.Position
-  to_utf32 = function(text, position, from_encoding)
-    from_encoding = from_encoding or lsp.PositionEncodingKind.UTF16
-    if from_encoding == lsp.PositionEncodingKind.UTF32 then
-      return position
-    end
+  to_utf16 = function(text, position, from_encoding)
+    return to_utf(text, position, from_encoding, lsp.PositionEncodingKind.UTF16)
+  end,
 
-    local utf8 = lsp.Position.to_utf8(text, position, from_encoding)
-    for index = utf8.character, 0, -1 do
-      local ok, utf32index = pcall(function()
-        return select(1, vim.str_utfindex(text, index))
-      end)
-      if ok then
-        return { line = utf8.line, character = utf32index }
-      end
-    end
-    return position
+  to_utf32 = function(text, position, from_encoding)
+    return to_utf(text, position, from_encoding, lsp.PositionEncodingKind.UTF32)
   end,
 }
 
