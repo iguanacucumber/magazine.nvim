@@ -31,7 +31,7 @@
 
 ## Multi commit
 
-### Use newer APIs like vim.uv and vim.iter instead of vim.loop & vim.tbl\_ when possible
+### Use newer APIs like vim.uv and vim.iter instead of vim.loop & vim.tbl\_  and use newer vim.str_utfindex when possible
 
 #### Magazine.nvim
 
@@ -42,6 +42,8 @@
 - 12f94701f023eb60b7a26b32535566f165d33182
 - d3ee82553255fa9c6284fd58f1d66581c621d098
 - 80b26f0f4e51836b5e3296ed6f3f2a5509a285ab
+- 3828bab
+- 7707dc3
 
 #### mag-cmdline
 
