@@ -83,7 +83,7 @@ lsp.Position = {
       return position
     end
 
-    local has_nvim11 = vim.fn.has("nvim-0.11") == 1
+    local has_nvim11 = vim.fn.has('nvim-0.11') == 1
 
     local utf8 = lsp.Position.to_utf8(text, position, from_encoding)
     for index = utf8.character, 0, -1 do
@@ -112,7 +112,7 @@ lsp.Position = {
       return position
     end
 
-    local has_nvim11 = vim.fn.has("nvim-0.11") == 1
+    local has_nvim11 = vim.fn.has('nvim-0.11') == 1
 
     local utf8 = lsp.Position.to_utf8(text, position, from_encoding)
     for index = utf8.character, 0, -1 do

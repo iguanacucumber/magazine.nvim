@@ -215,7 +215,7 @@ end
 ---@return integer
 misc.to_utfindex = function(text, vimindex)
   vimindex = vimindex or #text + 1
-  if vim.fn.has("nvim-0.11") == 1 then
+  if vim.fn.has('nvim-0.11') == 1 then
     return vim.str_utfindex(text, 'utf-32', math.max(0, math.min(vimindex - 1, #text)))
   else
     return vim.str_utfindex(text, math.max(0, math.min(vimindex - 1, #text)))
