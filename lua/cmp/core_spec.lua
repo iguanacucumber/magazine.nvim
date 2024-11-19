@@ -146,20 +146,41 @@ describe('cmp.core', function()
       end)
 
       local char = '🗿'
-      for _, case in ipairs({
-        {
-          encoding = types.lsp.PositionEncodingKind.UTF8,
-          char_size = #char,
-        },
-        {
-          encoding = types.lsp.PositionEncodingKind.UTF16,
-          char_size = vim.str_utfindex(char, types.lsp.PositionEncodingKind.UTF16),
-        },
-        {
-          encoding = types.lsp.PositionEncodingKind.UTF32,
-          char_size = vim.str_utfindex(char, types.lsp.PositionEncodingKind.UTF32),
-        },
-      }) do
+      local encoding_table
+
+      if vim.fn.has('nvim-0.11') == 1 then
+        encoding_table = {
+          {
+            encoding = types.lsp.PositionEncodingKind.UTF8,
+            char_size = #char,
+          },
+          {
+            encoding = types.lsp.PositionEncodingKind.UTF16,
+            char_size = vim.str_utfindex(char, types.lsp.PositionEncodingKind.UTF16),
+          },
+          {
+            encoding = types.lsp.PositionEncodingKind.UTF32,
+            char_size = vim.str_utfindex(char, types.lsp.PositionEncodingKind.UTF32),
+          },
+        }
+      else
+        encoding_table = {
+          {
+            encoding = types.lsp.PositionEncodingKind.UTF8,
+            char_size = #char,
+          },
+          {
+            encoding = types.lsp.PositionEncodingKind.UTF16,
+            char_size = select(2, vim.str_utfindex(char)),
+          },
+          {
+            encoding = types.lsp.PositionEncodingKind.UTF32,
+            char_size = select(1, vim.str_utfindex(char)),
+          },
+        }
+      end
+
+      for _, case in ipairs(encoding_table) do
         it('textEdit & multibyte: ' .. case.encoding, function()
           local state = confirm(keymap.t('i%s:%s%s:%s<Left><Left><Left>'):format(char, char, char, char), char, {
             label = char .. char .. char,
