@@ -24,7 +24,6 @@
 - fix missing required fields in formatting config [#2040](https://github.com/hrsh7th/nvim-cmp/pull/2040)
 - fix(utils): Only call callback if type(callback) == "function" [#2038](https://github.com/hrsh7th/nvim-cmp/pull/2038)
 - fix: the height of docs view get wrong when content lines get wrapped [#2032](https://github.com/hrsh7th/nvim-cmp/pull/2032)
-- fix: The items within the view of Completion are in the wrong order. [#2020](https://github.com/hrsh7th/nvim-cmp/pull/2020)
 - Keep empty lines when showing ghost_text [#2002](https://github.com/hrsh7th/nvim-cmp/pull/2002)
 - fixup! fix: remove deprecated use of vim.tbl_add_reverse_lookup ([#1931](https://github.com/hrsh7th/nvim-cmp/pull/1931)) [#1991](https://github.com/hrsh7th/nvim-cmp/pull/1991)
 - Fix misc.merge() [#1956](https://github.com/hrsh7th/nvim-cmp/pull/1956)
