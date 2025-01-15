@@ -58,6 +58,7 @@ On every sources i've applied this PR, which checks if a plugins is loaded befor
 
 ### mag-cmdline
 
+- @fix: escape special chars in filenames [#122](https://github.com/hrsh7th/cmp-cmdline/pull/122)
 - feat: Support @ cmdtype completion for input() function [#76](https://github.com/hrsh7th/cmp-cmdline/pull/76)
 - feat: Completion for %(:*) and #(:*) [#105](https://github.com/hrsh7th/cmp-cmdline/pull/105)
 - fix: Escape dollars in names to prevent env-var expansion [#117](https://github.com/hrsh7th/cmp-cmdline/pull/117)
