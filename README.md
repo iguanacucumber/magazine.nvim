@@ -14,6 +14,9 @@ btw i called magazine.nvim like this just to avoid confusion with the original p
 
 If you have any bugs from those PRs/changes, create an issue on this repo, so we'll be able to make changes quicker. 
 
+> [!NOTE]
+> If you are a distro, you can still use this fork since i make stable releases
+
 ## before switching to this fork do this:
 
 ```lua
