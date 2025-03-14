@@ -290,6 +290,7 @@ entry._get_view = function(self, item, entries_buf)
     view.menu.hl_group = item.menu_hl_group or 'CmpItemMenu'
     view.dup = item.dup
   end)
+
   return view
 end
 

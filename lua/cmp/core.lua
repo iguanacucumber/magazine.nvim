@@ -441,11 +441,11 @@ core.confirm = function(self, e, option, callback)
           return
         end
         vim.cmd([[silent! undojoin]])
-        vim.lsp.util.apply_text_edits(text_edits, ctx.bufnr, e.source:get_position_encoding_kind())
+        api.apply_text_edits(text_edits, ctx.bufnr, e.source:get_position_encoding_kind())
       end)
     else
       vim.cmd([[silent! undojoin]])
-      vim.lsp.util.apply_text_edits(e.completion_item.additionalTextEdits, ctx.bufnr, e.source:get_position_encoding_kind())
+      api.apply_text_edits(e.completion_item.additionalTextEdits, ctx.bufnr, e.source:get_position_encoding_kind())
     end
   end)
   feedkeys.call('', 'n', function()
