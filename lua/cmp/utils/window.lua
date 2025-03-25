@@ -175,6 +175,7 @@ window.update = function(self)
       relative = 'editor',
       style = 'minimal',
       width = 1,
+      border = 'none',
       height = thumb_height,
       row = info.row + thumb_offset + (info.border_info.visible and info.border_info.top or 0),
       col = info.col + info.width - 1, -- info.col was already added scrollbar offset.

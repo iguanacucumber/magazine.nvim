@@ -9,6 +9,7 @@
 
 ### magazine.nvim
 
+- fix: do not borders with vim.o.winborder on the scrollbar
 - Use NormalFloat instead of Normal for cmp.config.window.bordered()'s winhighlight #3
 - feature request github issue template
 - utils: vimrc.vim -> init.lua (kickstart.nvim based)
